@@ -1,0 +1,9 @@
+[tools]
+go = "1.27"
+
+[tasks.setup]
+description = "ワークスペースを初期化する（Go依存モジュールの取得と検証）"
+run = [
+  "go mod download",
+  "go mod verify",
+]
