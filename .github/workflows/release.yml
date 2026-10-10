@@ -1,0 +1,36 @@
+name: Release Windows CLI
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: write
+jobs:
+  release:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27.x'
+          cache: false
+      - name: Validate tag and build
+        shell: pwsh
+        run: |
+          $version = $env:GITHUB_REF_NAME -replace '^v',''
+          if ($version -notmatch '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$') { throw 'Stable x.y.z tag required' }
+          ./scripts/build.ps1 -Version $version -Repository '${{ github.repository }}'
+          git diff --exit-code -- go.mod go.sum
+          if ($LASTEXITCODE -ne 0) { throw 'Dependency lock differs. Commit it before tagging.' }
+          if (-not (Test-Path go.sum)) { throw 'go.sum must be tracked before release' }
+          git ls-files --error-unmatch go.sum
+          if ($LASTEXITCODE -ne 0) { throw 'go.sum is not tracked' }
+          ./scripts/package.ps1 -Version $version
+      - name: Publish only after successful Windows tests
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = $env:GITHUB_REF_NAME -replace '^v',''
+          gh release create $env:GITHUB_REF_NAME "dist/ucspec_${version}_windows_amd64.zip" dist/checksums.txt --verify-tag --title "UCSPEC $version" --generate-notes
+          if ($LASTEXITCODE -ne 0) { throw 'Release creation failed' }

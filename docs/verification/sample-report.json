@@ -1,0 +1,4344 @@
+{
+  "formatVersion": "1",
+  "toolVersion": "0.1.0",
+  "schemaVersion": "1",
+  "name": "顧客管理サンプル",
+  "inputHash": "7cdc96bf65cdc68f08fa170cd4c6bca68a7197baa05255daabaff0e59b2993d8",
+  "limits": {
+    "states": 5000,
+    "steps": 8,
+    "paths": 100000,
+    "combinations": 256
+  },
+  "status": "verified",
+  "complete": true,
+  "reachableStates": 27,
+  "diagnostics": [
+    {
+      "code": "infeasible-requirements",
+      "severity": "warning",
+      "subject": "usecases/deleteCustomer",
+      "message": "pairs has 6 infeasible control paths (listed, not silently counted)",
+      "source": {
+        "file": ""
+      }
+    },
+    {
+      "code": "infeasible-requirements",
+      "severity": "warning",
+      "subject": "usecases/deleteCustomer",
+      "message": "primePaths has 5 infeasible control paths (listed, not silently counted)",
+      "source": {
+        "file": ""
+      }
+    },
+    {
+      "code": "infeasible-requirements",
+      "severity": "warning",
+      "subject": "usecases/editCustomer",
+      "message": "pairs has 6 infeasible control paths (listed, not silently counted)",
+      "source": {
+        "file": ""
+      }
+    },
+    {
+      "code": "infeasible-requirements",
+      "severity": "warning",
+      "subject": "usecases/editCustomer",
+      "message": "primePaths has 3 infeasible control paths (listed, not silently counted)",
+      "source": {
+        "file": ""
+      }
+    }
+  ],
+  "checks": [
+    {
+      "id": "canReturn",
+      "kind": "recoverable",
+      "status": "verified",
+      "message": "各到達状態から検索結果または検索条件へ戻る経路がある（必ず終了する保証ではない）。"
+    },
+    {
+      "id": "deletePossible",
+      "kind": "reachable",
+      "status": "verified",
+      "message": "削除成功に到達する経路が存在する。",
+      "witness": {
+        "start": {
+          "state": "search",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        "steps": [
+          {
+            "transition": "searchFound"
+          },
+          {
+            "transition": "openView"
+          },
+          {
+            "transition": "openDelete"
+          },
+          {
+            "transition": "confirmDelete"
+          },
+          {
+            "transition": "deleteSucceeded",
+            "input": {
+              "success": true
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "editableTarget",
+      "kind": "invariant",
+      "status": "verified",
+      "message": "変更・保存・削除処理の実行状態では、対象が存在し編集権限がある。"
+    },
+    {
+      "id": "noResurrection",
+      "kind": "invariant",
+      "status": "verified",
+      "message": "削除済みの対象が閲覧・変更・削除画面に残らない。"
+    },
+    {
+      "id": "savePossible",
+      "kind": "reachable",
+      "status": "verified",
+      "message": "保存成功に到達する経路が存在する。",
+      "witness": {
+        "start": {
+          "state": "search",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        "steps": [
+          {
+            "transition": "searchFound"
+          },
+          {
+            "transition": "openView"
+          },
+          {
+            "transition": "openEdit"
+          },
+          {
+            "transition": "saveValid",
+            "input": {
+              "valid": true
+            }
+          },
+          {
+            "transition": "saveSucceeded",
+            "input": {
+              "success": true
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "completion/deleteCustomer/1",
+      "kind": "usecase-completion",
+      "status": "verified",
+      "message": "some completion path exists from this start",
+      "witness": {
+        "start": {
+          "state": "search",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        "steps": [
+          {
+            "transition": "searchFound"
+          },
+          {
+            "transition": "openView"
+          },
+          {
+            "transition": "openDelete"
+          },
+          {
+            "transition": "cancelDelete"
+          }
+        ]
+      }
+    },
+    {
+      "id": "completion/deleteCustomer/2",
+      "kind": "usecase-completion",
+      "status": "verified",
+      "message": "some completion path exists from this start",
+      "witness": {
+        "start": {
+          "state": "search",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "reader"
+          }
+        },
+        "steps": [
+          {
+            "transition": "searchFound"
+          },
+          {
+            "transition": "openView"
+          },
+          {
+            "transition": "denyDelete"
+          }
+        ]
+      }
+    },
+    {
+      "id": "completion/editCustomer/1",
+      "kind": "usecase-completion",
+      "status": "verified",
+      "message": "some completion path exists from this start",
+      "witness": {
+        "start": {
+          "state": "search",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        "steps": [
+          {
+            "transition": "searchFound"
+          },
+          {
+            "transition": "openView"
+          },
+          {
+            "transition": "openEdit"
+          },
+          {
+            "transition": "cancelEdit"
+          }
+        ]
+      }
+    },
+    {
+      "id": "completion/editCustomer/2",
+      "kind": "usecase-completion",
+      "status": "verified",
+      "message": "some completion path exists from this start",
+      "witness": {
+        "start": {
+          "state": "search",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "reader"
+          }
+        },
+        "steps": [
+          {
+            "transition": "searchFound"
+          },
+          {
+            "transition": "openView"
+          },
+          {
+            "transition": "denyEdit"
+          }
+        ]
+      }
+    },
+    {
+      "id": "completion/viewCustomer/1",
+      "kind": "usecase-completion",
+      "status": "verified",
+      "message": "some completion path exists from this start",
+      "witness": {
+        "start": {
+          "state": "search",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        "steps": [
+          {
+            "transition": "searchFound"
+          },
+          {
+            "transition": "openView"
+          }
+        ]
+      }
+    },
+    {
+      "id": "completion/viewCustomer/2",
+      "kind": "usecase-completion",
+      "status": "verified",
+      "message": "some completion path exists from this start",
+      "witness": {
+        "start": {
+          "state": "search",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "reader"
+          }
+        },
+        "steps": [
+          {
+            "transition": "searchFound"
+          },
+          {
+            "transition": "openView"
+          }
+        ]
+      }
+    },
+    {
+      "id": "deleteThenSearch",
+      "kind": "regression",
+      "status": "verified",
+      "message": "",
+      "witness": {
+        "start": {
+          "state": "search",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        "steps": [
+          {
+            "transition": "searchFound"
+          },
+          {
+            "transition": "openView"
+          },
+          {
+            "transition": "openDelete"
+          },
+          {
+            "transition": "confirmDelete"
+          },
+          {
+            "transition": "deleteSucceeded",
+            "input": {
+              "success": true
+            }
+          },
+          {
+            "transition": "searchEmpty"
+          }
+        ]
+      }
+    },
+    {
+      "id": "readerCannotEdit",
+      "kind": "regression",
+      "status": "verified",
+      "message": "",
+      "witness": {
+        "start": {
+          "state": "search",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "reader"
+          }
+        },
+        "steps": [
+          {
+            "transition": "searchFound"
+          },
+          {
+            "transition": "openView"
+          },
+          {
+            "transition": "openEdit",
+            "reject": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "savePermissions/1",
+      "kind": "decision",
+      "status": "verified",
+      "message": "matches independent decision table"
+    },
+    {
+      "id": "savePermissions/2",
+      "kind": "decision",
+      "status": "verified",
+      "message": "matches independent decision table"
+    },
+    {
+      "id": "savePermissions/3",
+      "kind": "decision",
+      "status": "verified",
+      "message": "matches independent decision table"
+    },
+    {
+      "id": "savePermissions/4",
+      "kind": "decision",
+      "status": "verified",
+      "message": "matches independent decision table"
+    },
+    {
+      "id": "savePermissions/5",
+      "kind": "decision",
+      "status": "verified",
+      "message": "matches independent decision table"
+    },
+    {
+      "id": "savePermissions/6",
+      "kind": "decision",
+      "status": "verified",
+      "message": "matches independent decision table"
+    },
+    {
+      "id": "savePermissions/7",
+      "kind": "decision",
+      "status": "verified",
+      "message": "matches independent decision table"
+    },
+    {
+      "id": "savePermissions/8",
+      "kind": "decision",
+      "status": "verified",
+      "message": "matches independent decision table"
+    }
+  ],
+  "scenarios": [
+    {
+      "expect": {
+        "and": [
+          {
+            "eq": [
+              {
+                "var": "exists"
+              },
+              true
+            ]
+          },
+          {
+            "eq": [
+              {
+                "var": "outcome"
+              },
+              "cancelled"
+            ]
+          }
+        ]
+      },
+      "id": "deleteCustomer/cancel",
+      "name": "削除を中止する",
+      "usecase": "deleteCustomer",
+      "valid": true,
+      "trace": [
+        {
+          "state": "search",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        {
+          "state": "results",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        {
+          "state": "view",
+          "values": {
+            "exists": true,
+            "outcome": "viewed",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        {
+          "state": "confirming",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        {
+          "state": "view",
+          "values": {
+            "exists": true,
+            "outcome": "cancelled",
+            "revision": "original",
+            "role": "editor"
+          }
+        }
+      ],
+      "witness": {
+        "start": {
+          "state": "search",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        "steps": [
+          {
+            "transition": "searchFound"
+          },
+          {
+            "transition": "openView"
+          },
+          {
+            "transition": "openDelete"
+          },
+          {
+            "transition": "cancelDelete"
+          }
+        ]
+      },
+      "guardObservations": [
+        {
+          "transition": "searchEmpty",
+          "atoms": {
+            "exists": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "searchFound",
+          "atoms": {
+            "exists": true
+          },
+          "guard": true
+        },
+        {
+          "transition": "openGone",
+          "atoms": {
+            "exists": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "openView",
+          "atoms": {
+            "exists": true
+          },
+          "guard": true
+        },
+        {
+          "transition": "denyDelete",
+          "atoms": {
+            "canEdit": true,
+            "exists": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "openDelete",
+          "atoms": {
+            "canEdit": true,
+            "exists": true
+          },
+          "guard": true
+        },
+        {
+          "transition": "cancelDelete",
+          "atoms": {},
+          "guard": true
+        }
+      ]
+    },
+    {
+      "expect": {
+        "and": [
+          {
+            "eq": [
+              {
+                "var": "exists"
+              },
+              false
+            ]
+          },
+          {
+            "eq": [
+              {
+                "var": "outcome"
+              },
+              "deleted"
+            ]
+          },
+          {
+            "eq": [
+              {
+                "var": "$state"
+              },
+              "search"
+            ]
+          }
+        ]
+      },
+      "id": "deleteCustomer/delete",
+      "name": "削除を確定する",
+      "usecase": "deleteCustomer",
+      "valid": true,
+      "trace": [
+        {
+          "state": "search",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        {
+          "state": "results",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        {
+          "state": "view",
+          "values": {
+            "exists": true,
+            "outcome": "viewed",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        {
+          "state": "confirming",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        {
+          "state": "deleting",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        {
+          "state": "search",
+          "values": {
+            "exists": false,
+            "outcome": "deleted",
+            "revision": "original",
+            "role": "editor"
+          }
+        }
+      ],
+      "witness": {
+        "start": {
+          "state": "search",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        "steps": [
+          {
+            "transition": "searchFound"
+          },
+          {
+            "transition": "openView"
+          },
+          {
+            "transition": "openDelete"
+          },
+          {
+            "transition": "confirmDelete"
+          },
+          {
+            "transition": "deleteSucceeded",
+            "input": {
+              "success": true
+            }
+          }
+        ]
+      },
+      "guardObservations": [
+        {
+          "transition": "searchEmpty",
+          "atoms": {
+            "exists": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "searchFound",
+          "atoms": {
+            "exists": true
+          },
+          "guard": true
+        },
+        {
+          "transition": "openGone",
+          "atoms": {
+            "exists": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "openView",
+          "atoms": {
+            "exists": true
+          },
+          "guard": true
+        },
+        {
+          "transition": "denyDelete",
+          "atoms": {
+            "canEdit": true,
+            "exists": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "openDelete",
+          "atoms": {
+            "canEdit": true,
+            "exists": true
+          },
+          "guard": true
+        },
+        {
+          "transition": "confirmDelete",
+          "atoms": {
+            "canEdit": true,
+            "exists": true
+          },
+          "guard": true
+        },
+        {
+          "transition": "denyConfirm",
+          "atoms": {
+            "canEdit": true,
+            "exists": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "deleteFailed",
+          "atoms": {
+            "operationSucceeded": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "deleteSucceeded",
+          "atoms": {
+            "operationSucceeded": true
+          },
+          "guard": true
+        }
+      ]
+    },
+    {
+      "expect": {
+        "and": [
+          {
+            "eq": [
+              {
+                "var": "exists"
+              },
+              true
+            ]
+          },
+          {
+            "eq": [
+              {
+                "var": "outcome"
+              },
+              "denied"
+            ]
+          }
+        ]
+      },
+      "id": "deleteCustomer/denied",
+      "name": "閲覧権限では削除できない",
+      "usecase": "deleteCustomer",
+      "valid": true,
+      "trace": [
+        {
+          "state": "search",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "reader"
+          }
+        },
+        {
+          "state": "results",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "reader"
+          }
+        },
+        {
+          "state": "view",
+          "values": {
+            "exists": true,
+            "outcome": "viewed",
+            "revision": "original",
+            "role": "reader"
+          }
+        },
+        {
+          "state": "view",
+          "values": {
+            "exists": true,
+            "outcome": "denied",
+            "revision": "original",
+            "role": "reader"
+          }
+        }
+      ],
+      "witness": {
+        "start": {
+          "state": "search",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "reader"
+          }
+        },
+        "steps": [
+          {
+            "transition": "searchFound"
+          },
+          {
+            "transition": "openView"
+          },
+          {
+            "transition": "denyDelete"
+          }
+        ]
+      },
+      "guardObservations": [
+        {
+          "transition": "searchEmpty",
+          "atoms": {
+            "exists": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "searchFound",
+          "atoms": {
+            "exists": true
+          },
+          "guard": true
+        },
+        {
+          "transition": "openGone",
+          "atoms": {
+            "exists": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "openView",
+          "atoms": {
+            "exists": true
+          },
+          "guard": true
+        },
+        {
+          "transition": "denyDelete",
+          "atoms": {
+            "canEdit": false,
+            "exists": true
+          },
+          "guard": true
+        },
+        {
+          "transition": "openDelete",
+          "atoms": {
+            "canEdit": false,
+            "exists": true
+          },
+          "guard": false
+        }
+      ]
+    },
+    {
+      "expect": {
+        "and": [
+          {
+            "eq": [
+              {
+                "var": "exists"
+              },
+              false
+            ]
+          },
+          {
+            "eq": [
+              {
+                "var": "outcome"
+              },
+              "deleted"
+            ]
+          }
+        ]
+      },
+      "id": "deleteCustomer/retry",
+      "name": "削除失敗後に再試行する",
+      "usecase": "deleteCustomer",
+      "valid": true,
+      "trace": [
+        {
+          "state": "search",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        {
+          "state": "results",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        {
+          "state": "view",
+          "values": {
+            "exists": true,
+            "outcome": "viewed",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        {
+          "state": "confirming",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        {
+          "state": "deleting",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        {
+          "state": "view",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        {
+          "state": "confirming",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        {
+          "state": "deleting",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        {
+          "state": "search",
+          "values": {
+            "exists": false,
+            "outcome": "deleted",
+            "revision": "original",
+            "role": "editor"
+          }
+        }
+      ],
+      "witness": {
+        "start": {
+          "state": "search",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        "steps": [
+          {
+            "transition": "searchFound"
+          },
+          {
+            "transition": "openView"
+          },
+          {
+            "transition": "openDelete"
+          },
+          {
+            "transition": "confirmDelete"
+          },
+          {
+            "transition": "deleteFailed",
+            "input": {
+              "success": false
+            }
+          },
+          {
+            "transition": "openDelete"
+          },
+          {
+            "transition": "confirmDelete"
+          },
+          {
+            "transition": "deleteSucceeded",
+            "input": {
+              "success": true
+            }
+          }
+        ]
+      },
+      "guardObservations": [
+        {
+          "transition": "searchEmpty",
+          "atoms": {
+            "exists": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "searchFound",
+          "atoms": {
+            "exists": true
+          },
+          "guard": true
+        },
+        {
+          "transition": "openGone",
+          "atoms": {
+            "exists": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "openView",
+          "atoms": {
+            "exists": true
+          },
+          "guard": true
+        },
+        {
+          "transition": "denyDelete",
+          "atoms": {
+            "canEdit": true,
+            "exists": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "openDelete",
+          "atoms": {
+            "canEdit": true,
+            "exists": true
+          },
+          "guard": true
+        },
+        {
+          "transition": "confirmDelete",
+          "atoms": {
+            "canEdit": true,
+            "exists": true
+          },
+          "guard": true
+        },
+        {
+          "transition": "denyConfirm",
+          "atoms": {
+            "canEdit": true,
+            "exists": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "deleteFailed",
+          "atoms": {
+            "operationSucceeded": false
+          },
+          "guard": true
+        },
+        {
+          "transition": "deleteSucceeded",
+          "atoms": {
+            "operationSucceeded": false
+          },
+          "guard": false
+        },
+        {
+          "transition": "denyDelete",
+          "atoms": {
+            "canEdit": true,
+            "exists": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "openDelete",
+          "atoms": {
+            "canEdit": true,
+            "exists": true
+          },
+          "guard": true
+        },
+        {
+          "transition": "confirmDelete",
+          "atoms": {
+            "canEdit": true,
+            "exists": true
+          },
+          "guard": true
+        },
+        {
+          "transition": "denyConfirm",
+          "atoms": {
+            "canEdit": true,
+            "exists": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "deleteFailed",
+          "atoms": {
+            "operationSucceeded": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "deleteSucceeded",
+          "atoms": {
+            "operationSucceeded": true
+          },
+          "guard": true
+        }
+      ]
+    },
+    {
+      "expect": {
+        "and": [
+          {
+            "eq": [
+              {
+                "var": "revision"
+              },
+              "original"
+            ]
+          },
+          {
+            "eq": [
+              {
+                "var": "outcome"
+              },
+              "cancelled"
+            ]
+          }
+        ]
+      },
+      "id": "editCustomer/cancel",
+      "name": "変更を中止する",
+      "usecase": "editCustomer",
+      "valid": true,
+      "trace": [
+        {
+          "state": "search",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        {
+          "state": "results",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        {
+          "state": "view",
+          "values": {
+            "exists": true,
+            "outcome": "viewed",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        {
+          "state": "editing",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        {
+          "state": "view",
+          "values": {
+            "exists": true,
+            "outcome": "cancelled",
+            "revision": "original",
+            "role": "editor"
+          }
+        }
+      ],
+      "witness": {
+        "start": {
+          "state": "search",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        "steps": [
+          {
+            "transition": "searchFound"
+          },
+          {
+            "transition": "openView"
+          },
+          {
+            "transition": "openEdit"
+          },
+          {
+            "transition": "cancelEdit"
+          }
+        ]
+      },
+      "guardObservations": [
+        {
+          "transition": "searchEmpty",
+          "atoms": {
+            "exists": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "searchFound",
+          "atoms": {
+            "exists": true
+          },
+          "guard": true
+        },
+        {
+          "transition": "openGone",
+          "atoms": {
+            "exists": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "openView",
+          "atoms": {
+            "exists": true
+          },
+          "guard": true
+        },
+        {
+          "transition": "denyEdit",
+          "atoms": {
+            "canEdit": true,
+            "exists": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "openEdit",
+          "atoms": {
+            "canEdit": true,
+            "exists": true
+          },
+          "guard": true
+        },
+        {
+          "transition": "cancelEdit",
+          "atoms": {},
+          "guard": true
+        }
+      ]
+    },
+    {
+      "expect": {
+        "and": [
+          {
+            "eq": [
+              {
+                "var": "$state"
+              },
+              "view"
+            ]
+          },
+          {
+            "eq": [
+              {
+                "var": "outcome"
+              },
+              "denied"
+            ]
+          }
+        ]
+      },
+      "id": "editCustomer/denied",
+      "name": "閲覧権限では変更できない",
+      "usecase": "editCustomer",
+      "valid": true,
+      "trace": [
+        {
+          "state": "search",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "reader"
+          }
+        },
+        {
+          "state": "results",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "reader"
+          }
+        },
+        {
+          "state": "view",
+          "values": {
+            "exists": true,
+            "outcome": "viewed",
+            "revision": "original",
+            "role": "reader"
+          }
+        },
+        {
+          "state": "view",
+          "values": {
+            "exists": true,
+            "outcome": "denied",
+            "revision": "original",
+            "role": "reader"
+          }
+        }
+      ],
+      "witness": {
+        "start": {
+          "state": "search",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "reader"
+          }
+        },
+        "steps": [
+          {
+            "transition": "searchFound"
+          },
+          {
+            "transition": "openView"
+          },
+          {
+            "transition": "denyEdit"
+          }
+        ]
+      },
+      "guardObservations": [
+        {
+          "transition": "searchEmpty",
+          "atoms": {
+            "exists": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "searchFound",
+          "atoms": {
+            "exists": true
+          },
+          "guard": true
+        },
+        {
+          "transition": "openGone",
+          "atoms": {
+            "exists": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "openView",
+          "atoms": {
+            "exists": true
+          },
+          "guard": true
+        },
+        {
+          "transition": "denyEdit",
+          "atoms": {
+            "canEdit": false,
+            "exists": true
+          },
+          "guard": true
+        },
+        {
+          "transition": "openEdit",
+          "atoms": {
+            "canEdit": false,
+            "exists": true
+          },
+          "guard": false
+        }
+      ]
+    },
+    {
+      "expect": {
+        "and": [
+          {
+            "eq": [
+              {
+                "var": "revision"
+              },
+              "updated"
+            ]
+          },
+          {
+            "eq": [
+              {
+                "var": "outcome"
+              },
+              "saved"
+            ]
+          }
+        ]
+      },
+      "id": "editCustomer/invalidThenSave",
+      "name": "入力エラーを直して保存する",
+      "usecase": "editCustomer",
+      "valid": true,
+      "trace": [
+        {
+          "state": "search",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        {
+          "state": "results",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        {
+          "state": "view",
+          "values": {
+            "exists": true,
+            "outcome": "viewed",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        {
+          "state": "editing",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        {
+          "state": "editing",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        {
+          "state": "saving",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        {
+          "state": "view",
+          "values": {
+            "exists": true,
+            "outcome": "saved",
+            "revision": "updated",
+            "role": "editor"
+          }
+        }
+      ],
+      "witness": {
+        "start": {
+          "state": "search",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        "steps": [
+          {
+            "transition": "searchFound"
+          },
+          {
+            "transition": "openView"
+          },
+          {
+            "transition": "openEdit"
+          },
+          {
+            "transition": "saveInvalid",
+            "input": {
+              "valid": false
+            }
+          },
+          {
+            "transition": "saveValid",
+            "input": {
+              "valid": true
+            }
+          },
+          {
+            "transition": "saveSucceeded",
+            "input": {
+              "success": true
+            }
+          }
+        ]
+      },
+      "guardObservations": [
+        {
+          "transition": "searchEmpty",
+          "atoms": {
+            "exists": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "searchFound",
+          "atoms": {
+            "exists": true
+          },
+          "guard": true
+        },
+        {
+          "transition": "openGone",
+          "atoms": {
+            "exists": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "openView",
+          "atoms": {
+            "exists": true
+          },
+          "guard": true
+        },
+        {
+          "transition": "denyEdit",
+          "atoms": {
+            "canEdit": true,
+            "exists": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "openEdit",
+          "atoms": {
+            "canEdit": true,
+            "exists": true
+          },
+          "guard": true
+        },
+        {
+          "transition": "saveInvalid",
+          "atoms": {
+            "canEdit": true,
+            "exists": true,
+            "inputValid": false
+          },
+          "guard": true
+        },
+        {
+          "transition": "saveValid",
+          "atoms": {
+            "canEdit": true,
+            "exists": true,
+            "inputValid": false
+          },
+          "guard": false
+        },
+        {
+          "transition": "saveInvalid",
+          "atoms": {
+            "canEdit": true,
+            "exists": true,
+            "inputValid": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "saveValid",
+          "atoms": {
+            "canEdit": true,
+            "exists": true,
+            "inputValid": true
+          },
+          "guard": true
+        },
+        {
+          "transition": "saveFailed",
+          "atoms": {
+            "operationSucceeded": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "saveSucceeded",
+          "atoms": {
+            "operationSucceeded": true
+          },
+          "guard": true
+        }
+      ]
+    },
+    {
+      "expect": {
+        "and": [
+          {
+            "eq": [
+              {
+                "var": "revision"
+              },
+              "updated"
+            ]
+          },
+          {
+            "eq": [
+              {
+                "var": "outcome"
+              },
+              "saved"
+            ]
+          }
+        ]
+      },
+      "id": "editCustomer/retry",
+      "name": "保存失敗後に再試行する",
+      "usecase": "editCustomer",
+      "valid": true,
+      "trace": [
+        {
+          "state": "search",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        {
+          "state": "results",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        {
+          "state": "view",
+          "values": {
+            "exists": true,
+            "outcome": "viewed",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        {
+          "state": "editing",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        {
+          "state": "saving",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        {
+          "state": "editing",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        {
+          "state": "saving",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        {
+          "state": "view",
+          "values": {
+            "exists": true,
+            "outcome": "saved",
+            "revision": "updated",
+            "role": "editor"
+          }
+        }
+      ],
+      "witness": {
+        "start": {
+          "state": "search",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        "steps": [
+          {
+            "transition": "searchFound"
+          },
+          {
+            "transition": "openView"
+          },
+          {
+            "transition": "openEdit"
+          },
+          {
+            "transition": "saveValid",
+            "input": {
+              "valid": true
+            }
+          },
+          {
+            "transition": "saveFailed",
+            "input": {
+              "success": false
+            }
+          },
+          {
+            "transition": "saveValid",
+            "input": {
+              "valid": true
+            }
+          },
+          {
+            "transition": "saveSucceeded",
+            "input": {
+              "success": true
+            }
+          }
+        ]
+      },
+      "guardObservations": [
+        {
+          "transition": "searchEmpty",
+          "atoms": {
+            "exists": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "searchFound",
+          "atoms": {
+            "exists": true
+          },
+          "guard": true
+        },
+        {
+          "transition": "openGone",
+          "atoms": {
+            "exists": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "openView",
+          "atoms": {
+            "exists": true
+          },
+          "guard": true
+        },
+        {
+          "transition": "denyEdit",
+          "atoms": {
+            "canEdit": true,
+            "exists": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "openEdit",
+          "atoms": {
+            "canEdit": true,
+            "exists": true
+          },
+          "guard": true
+        },
+        {
+          "transition": "saveInvalid",
+          "atoms": {
+            "canEdit": true,
+            "exists": true,
+            "inputValid": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "saveValid",
+          "atoms": {
+            "canEdit": true,
+            "exists": true,
+            "inputValid": true
+          },
+          "guard": true
+        },
+        {
+          "transition": "saveFailed",
+          "atoms": {
+            "operationSucceeded": false
+          },
+          "guard": true
+        },
+        {
+          "transition": "saveSucceeded",
+          "atoms": {
+            "operationSucceeded": false
+          },
+          "guard": false
+        },
+        {
+          "transition": "saveInvalid",
+          "atoms": {
+            "canEdit": true,
+            "exists": true,
+            "inputValid": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "saveValid",
+          "atoms": {
+            "canEdit": true,
+            "exists": true,
+            "inputValid": true
+          },
+          "guard": true
+        },
+        {
+          "transition": "saveFailed",
+          "atoms": {
+            "operationSucceeded": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "saveSucceeded",
+          "atoms": {
+            "operationSucceeded": true
+          },
+          "guard": true
+        }
+      ]
+    },
+    {
+      "expect": {
+        "and": [
+          {
+            "eq": [
+              {
+                "var": "revision"
+              },
+              "updated"
+            ]
+          },
+          {
+            "eq": [
+              {
+                "var": "$state"
+              },
+              "view"
+            ]
+          },
+          {
+            "eq": [
+              {
+                "var": "outcome"
+              },
+              "saved"
+            ]
+          }
+        ]
+      },
+      "id": "editCustomer/save",
+      "name": "正常に保存する",
+      "usecase": "editCustomer",
+      "valid": true,
+      "trace": [
+        {
+          "state": "search",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        {
+          "state": "results",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        {
+          "state": "view",
+          "values": {
+            "exists": true,
+            "outcome": "viewed",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        {
+          "state": "editing",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        {
+          "state": "saving",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        {
+          "state": "view",
+          "values": {
+            "exists": true,
+            "outcome": "saved",
+            "revision": "updated",
+            "role": "editor"
+          }
+        }
+      ],
+      "witness": {
+        "start": {
+          "state": "search",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        "steps": [
+          {
+            "transition": "searchFound"
+          },
+          {
+            "transition": "openView"
+          },
+          {
+            "transition": "openEdit"
+          },
+          {
+            "transition": "saveValid",
+            "input": {
+              "valid": true
+            }
+          },
+          {
+            "transition": "saveSucceeded",
+            "input": {
+              "success": true
+            }
+          }
+        ]
+      },
+      "guardObservations": [
+        {
+          "transition": "searchEmpty",
+          "atoms": {
+            "exists": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "searchFound",
+          "atoms": {
+            "exists": true
+          },
+          "guard": true
+        },
+        {
+          "transition": "openGone",
+          "atoms": {
+            "exists": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "openView",
+          "atoms": {
+            "exists": true
+          },
+          "guard": true
+        },
+        {
+          "transition": "denyEdit",
+          "atoms": {
+            "canEdit": true,
+            "exists": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "openEdit",
+          "atoms": {
+            "canEdit": true,
+            "exists": true
+          },
+          "guard": true
+        },
+        {
+          "transition": "saveInvalid",
+          "atoms": {
+            "canEdit": true,
+            "exists": true,
+            "inputValid": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "saveValid",
+          "atoms": {
+            "canEdit": true,
+            "exists": true,
+            "inputValid": true
+          },
+          "guard": true
+        },
+        {
+          "transition": "saveFailed",
+          "atoms": {
+            "operationSucceeded": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "saveSucceeded",
+          "atoms": {
+            "operationSucceeded": true
+          },
+          "guard": true
+        }
+      ]
+    },
+    {
+      "expect": {
+        "and": [
+          {
+            "eq": [
+              {
+                "var": "$state"
+              },
+              "view"
+            ]
+          },
+          {
+            "eq": [
+              {
+                "var": "exists"
+              },
+              true
+            ]
+          }
+        ]
+      },
+      "id": "viewCustomer/editor",
+      "name": "顧客を閲覧する（editor）",
+      "usecase": "viewCustomer",
+      "valid": true,
+      "trace": [
+        {
+          "state": "search",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        {
+          "state": "results",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        {
+          "state": "view",
+          "values": {
+            "exists": true,
+            "outcome": "viewed",
+            "revision": "original",
+            "role": "editor"
+          }
+        }
+      ],
+      "witness": {
+        "start": {
+          "state": "search",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        "steps": [
+          {
+            "transition": "searchFound"
+          },
+          {
+            "transition": "openView"
+          }
+        ]
+      },
+      "guardObservations": [
+        {
+          "transition": "searchEmpty",
+          "atoms": {
+            "exists": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "searchFound",
+          "atoms": {
+            "exists": true
+          },
+          "guard": true
+        },
+        {
+          "transition": "openGone",
+          "atoms": {
+            "exists": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "openView",
+          "atoms": {
+            "exists": true
+          },
+          "guard": true
+        }
+      ]
+    },
+    {
+      "expect": {
+        "and": [
+          {
+            "eq": [
+              {
+                "var": "$state"
+              },
+              "view"
+            ]
+          },
+          {
+            "eq": [
+              {
+                "var": "exists"
+              },
+              true
+            ]
+          }
+        ]
+      },
+      "id": "viewCustomer/reader",
+      "name": "顧客を閲覧する（reader）",
+      "usecase": "viewCustomer",
+      "valid": true,
+      "trace": [
+        {
+          "state": "search",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "reader"
+          }
+        },
+        {
+          "state": "results",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "reader"
+          }
+        },
+        {
+          "state": "view",
+          "values": {
+            "exists": true,
+            "outcome": "viewed",
+            "revision": "original",
+            "role": "reader"
+          }
+        }
+      ],
+      "witness": {
+        "start": {
+          "state": "search",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "reader"
+          }
+        },
+        "steps": [
+          {
+            "transition": "searchFound"
+          },
+          {
+            "transition": "openView"
+          }
+        ]
+      },
+      "guardObservations": [
+        {
+          "transition": "searchEmpty",
+          "atoms": {
+            "exists": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "searchFound",
+          "atoms": {
+            "exists": true
+          },
+          "guard": true
+        },
+        {
+          "transition": "openGone",
+          "atoms": {
+            "exists": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "openView",
+          "atoms": {
+            "exists": true
+          },
+          "guard": true
+        }
+      ]
+    },
+    {
+      "expect": {
+        "and": [
+          {
+            "eq": [
+              {
+                "var": "exists"
+              },
+              false
+            ]
+          },
+          {
+            "eq": [
+              {
+                "var": "$state"
+              },
+              "search"
+            ]
+          },
+          {
+            "eq": [
+              {
+                "var": "outcome"
+              },
+              "empty"
+            ]
+          }
+        ]
+      },
+      "id": "regressions/deleteThenSearch",
+      "name": "削除後に検索しても対象は復活しない",
+      "valid": true,
+      "trace": [
+        {
+          "state": "search",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        {
+          "state": "results",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        {
+          "state": "view",
+          "values": {
+            "exists": true,
+            "outcome": "viewed",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        {
+          "state": "confirming",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        {
+          "state": "deleting",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        {
+          "state": "search",
+          "values": {
+            "exists": false,
+            "outcome": "deleted",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        {
+          "state": "search",
+          "values": {
+            "exists": false,
+            "outcome": "empty",
+            "revision": "original",
+            "role": "editor"
+          }
+        }
+      ],
+      "witness": {
+        "start": {
+          "state": "search",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "editor"
+          }
+        },
+        "steps": [
+          {
+            "transition": "searchFound"
+          },
+          {
+            "transition": "openView"
+          },
+          {
+            "transition": "openDelete"
+          },
+          {
+            "transition": "confirmDelete"
+          },
+          {
+            "transition": "deleteSucceeded",
+            "input": {
+              "success": true
+            }
+          },
+          {
+            "transition": "searchEmpty"
+          }
+        ]
+      },
+      "guardObservations": [
+        {
+          "transition": "searchEmpty",
+          "atoms": {
+            "exists": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "searchFound",
+          "atoms": {
+            "exists": true
+          },
+          "guard": true
+        },
+        {
+          "transition": "openGone",
+          "atoms": {
+            "exists": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "openView",
+          "atoms": {
+            "exists": true
+          },
+          "guard": true
+        },
+        {
+          "transition": "denyDelete",
+          "atoms": {
+            "canEdit": true,
+            "exists": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "openDelete",
+          "atoms": {
+            "canEdit": true,
+            "exists": true
+          },
+          "guard": true
+        },
+        {
+          "transition": "confirmDelete",
+          "atoms": {
+            "canEdit": true,
+            "exists": true
+          },
+          "guard": true
+        },
+        {
+          "transition": "denyConfirm",
+          "atoms": {
+            "canEdit": true,
+            "exists": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "deleteFailed",
+          "atoms": {
+            "operationSucceeded": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "deleteSucceeded",
+          "atoms": {
+            "operationSucceeded": true
+          },
+          "guard": true
+        },
+        {
+          "transition": "searchEmpty",
+          "atoms": {
+            "exists": false
+          },
+          "guard": true
+        },
+        {
+          "transition": "searchFound",
+          "atoms": {
+            "exists": false
+          },
+          "guard": false
+        }
+      ]
+    },
+    {
+      "expect": {
+        "and": [
+          {
+            "eq": [
+              {
+                "var": "$state"
+              },
+              "view"
+            ]
+          },
+          {
+            "eq": [
+              {
+                "var": "revision"
+              },
+              "original"
+            ]
+          }
+        ]
+      },
+      "id": "regressions/readerCannotEdit",
+      "name": "閲覧者は変更開始遷移を実行できない",
+      "valid": true,
+      "trace": [
+        {
+          "state": "search",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "reader"
+          }
+        },
+        {
+          "state": "results",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "reader"
+          }
+        },
+        {
+          "state": "view",
+          "values": {
+            "exists": true,
+            "outcome": "viewed",
+            "revision": "original",
+            "role": "reader"
+          }
+        },
+        {
+          "state": "view",
+          "values": {
+            "exists": true,
+            "outcome": "viewed",
+            "revision": "original",
+            "role": "reader"
+          }
+        }
+      ],
+      "witness": {
+        "start": {
+          "state": "search",
+          "values": {
+            "exists": true,
+            "outcome": "none",
+            "revision": "original",
+            "role": "reader"
+          }
+        },
+        "steps": [
+          {
+            "transition": "searchFound"
+          },
+          {
+            "transition": "openView"
+          },
+          {
+            "transition": "openEdit",
+            "reject": true
+          }
+        ]
+      },
+      "guardObservations": [
+        {
+          "transition": "searchEmpty",
+          "atoms": {
+            "exists": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "searchFound",
+          "atoms": {
+            "exists": true
+          },
+          "guard": true
+        },
+        {
+          "transition": "openGone",
+          "atoms": {
+            "exists": true
+          },
+          "guard": false
+        },
+        {
+          "transition": "openView",
+          "atoms": {
+            "exists": true
+          },
+          "guard": true
+        }
+      ]
+    }
+  ],
+  "usecases": [
+    {
+      "id": "deleteCustomer",
+      "coverage": [
+        {
+          "kind": "transitions",
+          "covered": 8,
+          "total": 8,
+          "percent": 100,
+          "complete": true,
+          "missing": [],
+          "note": "Control-state paths; data feasibility checked in the finite execution graph. Infeasible requirements are listed separately. Pairs have exactly two transitions."
+        },
+        {
+          "kind": "pairs",
+          "covered": 8,
+          "total": 8,
+          "percent": 100,
+          "complete": true,
+          "missing": [],
+          "infeasible": [
+            {
+              "id": "cancelDelete \u003e denyDelete",
+              "path": [
+                "cancelDelete",
+                "denyDelete"
+              ]
+            },
+            {
+              "id": "cancelDelete \u003e openDelete",
+              "path": [
+                "cancelDelete",
+                "openDelete"
+              ]
+            },
+            {
+              "id": "deleteFailed \u003e denyDelete",
+              "path": [
+                "deleteFailed",
+                "denyDelete"
+              ]
+            },
+            {
+              "id": "deleteSucceeded \u003e searchFound",
+              "path": [
+                "deleteSucceeded",
+                "searchFound"
+              ]
+            },
+            {
+              "id": "denyDelete \u003e denyDelete",
+              "path": [
+                "denyDelete",
+                "denyDelete"
+              ]
+            },
+            {
+              "id": "denyDelete \u003e openDelete",
+              "path": [
+                "denyDelete",
+                "openDelete"
+              ]
+            }
+          ],
+          "note": "Control-state paths; data feasibility checked in the finite execution graph. Infeasible requirements are listed separately. Pairs have exactly two transitions."
+        },
+        {
+          "kind": "primePaths",
+          "covered": 6,
+          "total": 6,
+          "percent": 100,
+          "complete": true,
+          "missing": [],
+          "infeasible": [
+            {
+              "id": "cancelDelete \u003e openDelete",
+              "path": [
+                "cancelDelete",
+                "openDelete"
+              ]
+            },
+            {
+              "id": "confirmDelete \u003e deleteSucceeded \u003e searchFound \u003e openView \u003e openDelete",
+              "path": [
+                "confirmDelete",
+                "deleteSucceeded",
+                "searchFound",
+                "openView",
+                "openDelete"
+              ]
+            },
+            {
+              "id": "deleteSucceeded \u003e searchFound \u003e openView \u003e openDelete \u003e confirmDelete",
+              "path": [
+                "deleteSucceeded",
+                "searchFound",
+                "openView",
+                "openDelete",
+                "confirmDelete"
+              ]
+            },
+            {
+              "id": "openDelete \u003e confirmDelete \u003e deleteSucceeded \u003e searchFound \u003e openView",
+              "path": [
+                "openDelete",
+                "confirmDelete",
+                "deleteSucceeded",
+                "searchFound",
+                "openView"
+              ]
+            },
+            {
+              "id": "openView \u003e openDelete \u003e confirmDelete \u003e deleteSucceeded \u003e searchFound",
+              "path": [
+                "openView",
+                "openDelete",
+                "confirmDelete",
+                "deleteSucceeded",
+                "searchFound"
+              ]
+            }
+          ],
+          "note": "Control-state paths; data feasibility checked in the finite execution graph. Infeasible requirements are listed separately. Pairs have exactly two transitions."
+        },
+        {
+          "kind": "boundedPaths",
+          "covered": 4,
+          "total": 5,
+          "percent": 80,
+          "complete": true,
+          "missing": [
+            {
+              "id": "searchFound \u003e openView \u003e openDelete \u003e confirmDelete \u003e deleteFailed \u003e openDelete \u003e cancelDelete",
+              "path": [
+                "searchFound",
+                "openView",
+                "openDelete",
+                "confirmDelete",
+                "deleteFailed",
+                "openDelete",
+                "cancelDelete"
+              ],
+              "witness": {
+                "start": {
+                  "state": "search",
+                  "values": {
+                    "exists": true,
+                    "outcome": "none",
+                    "revision": "original",
+                    "role": "editor"
+                  }
+                },
+                "steps": [
+                  {
+                    "transition": "searchFound"
+                  },
+                  {
+                    "transition": "openView"
+                  },
+                  {
+                    "transition": "openDelete"
+                  },
+                  {
+                    "transition": "confirmDelete"
+                  },
+                  {
+                    "transition": "deleteFailed",
+                    "input": {
+                      "success": false
+                    }
+                  },
+                  {
+                    "transition": "openDelete"
+                  },
+                  {
+                    "transition": "cancelDelete"
+                  }
+                ]
+              }
+            }
+          ],
+          "note": "Complete transition-ID paths up to 8 transitions; data variants are merged here and checked by condition metrics separately."
+        },
+        {
+          "kind": "conditions",
+          "covered": 14,
+          "total": 14,
+          "percent": 100,
+          "complete": true,
+          "missing": [],
+          "note": "Logical truth of named conditions, at each transition guard evaluation (including false guards). Denominator: reachable state/event/input combinations, not arbitrary Boolean combinations; not runtime short-circuit coverage."
+        },
+        {
+          "kind": "multipleConditions",
+          "covered": 11,
+          "total": 11,
+          "percent": 100,
+          "complete": true,
+          "missing": [],
+          "note": "Logical truth of named conditions, at each transition guard evaluation (including false guards). Denominator: reachable state/event/input combinations, not arbitrary Boolean combinations; not runtime short-circuit coverage."
+        }
+      ],
+      "reachableStates": 12,
+      "complete": true
+    },
+    {
+      "id": "editCustomer",
+      "coverage": [
+        {
+          "kind": "transitions",
+          "covered": 9,
+          "total": 9,
+          "percent": 100,
+          "complete": true,
+          "missing": [],
+          "note": "Control-state paths; data feasibility checked in the finite execution graph. Infeasible requirements are listed separately. Pairs have exactly two transitions."
+        },
+        {
+          "kind": "pairs",
+          "covered": 10,
+          "total": 14,
+          "percent": 71.42857142857143,
+          "complete": true,
+          "missing": [
+            {
+              "id": "saveFailed \u003e cancelEdit",
+              "path": [
+                "saveFailed",
+                "cancelEdit"
+              ],
+              "witness": {
+                "start": {
+                  "state": "search",
+                  "values": {
+                    "exists": true,
+                    "outcome": "none",
+                    "revision": "original",
+                    "role": "editor"
+                  }
+                },
+                "steps": [
+                  {
+                    "transition": "searchFound"
+                  },
+                  {
+                    "transition": "openView"
+                  },
+                  {
+                    "transition": "openEdit"
+                  },
+                  {
+                    "transition": "saveValid",
+                    "input": {
+                      "valid": true
+                    }
+                  },
+                  {
+                    "transition": "saveFailed",
+                    "input": {
+                      "success": false
+                    }
+                  },
+                  {
+                    "transition": "cancelEdit"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "saveFailed \u003e saveInvalid",
+              "path": [
+                "saveFailed",
+                "saveInvalid"
+              ],
+              "witness": {
+                "start": {
+                  "state": "search",
+                  "values": {
+                    "exists": true,
+                    "outcome": "none",
+                    "revision": "original",
+                    "role": "editor"
+                  }
+                },
+                "steps": [
+                  {
+                    "transition": "searchFound"
+                  },
+                  {
+                    "transition": "openView"
+                  },
+                  {
+                    "transition": "openEdit"
+                  },
+                  {
+                    "transition": "saveValid",
+                    "input": {
+                      "valid": true
+                    }
+                  },
+                  {
+                    "transition": "saveFailed",
+                    "input": {
+                      "success": false
+                    }
+                  },
+                  {
+                    "transition": "saveInvalid",
+                    "input": {
+                      "valid": false
+                    }
+                  },
+                  {
+                    "transition": "cancelEdit"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "saveInvalid \u003e cancelEdit",
+              "path": [
+                "saveInvalid",
+                "cancelEdit"
+              ],
+              "witness": {
+                "start": {
+                  "state": "search",
+                  "values": {
+                    "exists": true,
+                    "outcome": "none",
+                    "revision": "original",
+                    "role": "editor"
+                  }
+                },
+                "steps": [
+                  {
+                    "transition": "searchFound"
+                  },
+                  {
+                    "transition": "openView"
+                  },
+                  {
+                    "transition": "openEdit"
+                  },
+                  {
+                    "transition": "saveInvalid",
+                    "input": {
+                      "valid": false
+                    }
+                  },
+                  {
+                    "transition": "cancelEdit"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "saveInvalid \u003e saveInvalid",
+              "path": [
+                "saveInvalid",
+                "saveInvalid"
+              ],
+              "witness": {
+                "start": {
+                  "state": "search",
+                  "values": {
+                    "exists": true,
+                    "outcome": "none",
+                    "revision": "original",
+                    "role": "editor"
+                  }
+                },
+                "steps": [
+                  {
+                    "transition": "searchFound"
+                  },
+                  {
+                    "transition": "openView"
+                  },
+                  {
+                    "transition": "openEdit"
+                  },
+                  {
+                    "transition": "saveInvalid",
+                    "input": {
+                      "valid": false
+                    }
+                  },
+                  {
+                    "transition": "saveInvalid",
+                    "input": {
+                      "valid": false
+                    }
+                  },
+                  {
+                    "transition": "cancelEdit"
+                  }
+                ]
+              }
+            }
+          ],
+          "infeasible": [
+            {
+              "id": "cancelEdit \u003e denyEdit",
+              "path": [
+                "cancelEdit",
+                "denyEdit"
+              ]
+            },
+            {
+              "id": "cancelEdit \u003e openEdit",
+              "path": [
+                "cancelEdit",
+                "openEdit"
+              ]
+            },
+            {
+              "id": "denyEdit \u003e denyEdit",
+              "path": [
+                "denyEdit",
+                "denyEdit"
+              ]
+            },
+            {
+              "id": "denyEdit \u003e openEdit",
+              "path": [
+                "denyEdit",
+                "openEdit"
+              ]
+            },
+            {
+              "id": "saveSucceeded \u003e denyEdit",
+              "path": [
+                "saveSucceeded",
+                "denyEdit"
+              ]
+            },
+            {
+              "id": "saveSucceeded \u003e openEdit",
+              "path": [
+                "saveSucceeded",
+                "openEdit"
+              ]
+            }
+          ],
+          "note": "Control-state paths; data feasibility checked in the finite execution graph. Infeasible requirements are listed separately. Pairs have exactly two transitions."
+        },
+        {
+          "kind": "primePaths",
+          "covered": 7,
+          "total": 8,
+          "percent": 87.5,
+          "complete": true,
+          "missing": [
+            {
+              "id": "saveFailed \u003e cancelEdit",
+              "path": [
+                "saveFailed",
+                "cancelEdit"
+              ],
+              "witness": {
+                "start": {
+                  "state": "search",
+                  "values": {
+                    "exists": true,
+                    "outcome": "none",
+                    "revision": "original",
+                    "role": "editor"
+                  }
+                },
+                "steps": [
+                  {
+                    "transition": "searchFound"
+                  },
+                  {
+                    "transition": "openView"
+                  },
+                  {
+                    "transition": "openEdit"
+                  },
+                  {
+                    "transition": "saveValid",
+                    "input": {
+                      "valid": true
+                    }
+                  },
+                  {
+                    "transition": "saveFailed",
+                    "input": {
+                      "success": false
+                    }
+                  },
+                  {
+                    "transition": "cancelEdit"
+                  }
+                ]
+              }
+            }
+          ],
+          "infeasible": [
+            {
+              "id": "cancelEdit \u003e openEdit",
+              "path": [
+                "cancelEdit",
+                "openEdit"
+              ]
+            },
+            {
+              "id": "saveSucceeded \u003e openEdit \u003e saveValid",
+              "path": [
+                "saveSucceeded",
+                "openEdit",
+                "saveValid"
+              ]
+            },
+            {
+              "id": "saveValid \u003e saveSucceeded \u003e openEdit",
+              "path": [
+                "saveValid",
+                "saveSucceeded",
+                "openEdit"
+              ]
+            }
+          ],
+          "note": "Control-state paths; data feasibility checked in the finite execution graph. Infeasible requirements are listed separately. Pairs have exactly two transitions."
+        },
+        {
+          "kind": "boundedPaths",
+          "covered": 5,
+          "total": 20,
+          "percent": 25,
+          "complete": true,
+          "missing": [
+            {
+              "id": "searchFound \u003e openView \u003e openEdit \u003e saveInvalid \u003e cancelEdit",
+              "path": [
+                "searchFound",
+                "openView",
+                "openEdit",
+                "saveInvalid",
+                "cancelEdit"
+              ],
+              "witness": {
+                "start": {
+                  "state": "search",
+                  "values": {
+                    "exists": true,
+                    "outcome": "none",
+                    "revision": "original",
+                    "role": "editor"
+                  }
+                },
+                "steps": [
+                  {
+                    "transition": "searchFound"
+                  },
+                  {
+                    "transition": "openView"
+                  },
+                  {
+                    "transition": "openEdit"
+                  },
+                  {
+                    "transition": "saveInvalid",
+                    "input": {
+                      "valid": false
+                    }
+                  },
+                  {
+                    "transition": "cancelEdit"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "searchFound \u003e openView \u003e openEdit \u003e saveInvalid \u003e saveInvalid \u003e cancelEdit",
+              "path": [
+                "searchFound",
+                "openView",
+                "openEdit",
+                "saveInvalid",
+                "saveInvalid",
+                "cancelEdit"
+              ],
+              "witness": {
+                "start": {
+                  "state": "search",
+                  "values": {
+                    "exists": true,
+                    "outcome": "none",
+                    "revision": "original",
+                    "role": "editor"
+                  }
+                },
+                "steps": [
+                  {
+                    "transition": "searchFound"
+                  },
+                  {
+                    "transition": "openView"
+                  },
+                  {
+                    "transition": "openEdit"
+                  },
+                  {
+                    "transition": "saveInvalid",
+                    "input": {
+                      "valid": false
+                    }
+                  },
+                  {
+                    "transition": "saveInvalid",
+                    "input": {
+                      "valid": false
+                    }
+                  },
+                  {
+                    "transition": "cancelEdit"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "searchFound \u003e openView \u003e openEdit \u003e saveInvalid \u003e saveInvalid \u003e saveInvalid \u003e cancelEdit",
+              "path": [
+                "searchFound",
+                "openView",
+                "openEdit",
+                "saveInvalid",
+                "saveInvalid",
+                "saveInvalid",
+                "cancelEdit"
+              ],
+              "witness": {
+                "start": {
+                  "state": "search",
+                  "values": {
+                    "exists": true,
+                    "outcome": "none",
+                    "revision": "original",
+                    "role": "editor"
+                  }
+                },
+                "steps": [
+                  {
+                    "transition": "searchFound"
+                  },
+                  {
+                    "transition": "openView"
+                  },
+                  {
+                    "transition": "openEdit"
+                  },
+                  {
+                    "transition": "saveInvalid",
+                    "input": {
+                      "valid": false
+                    }
+                  },
+                  {
+                    "transition": "saveInvalid",
+                    "input": {
+                      "valid": false
+                    }
+                  },
+                  {
+                    "transition": "saveInvalid",
+                    "input": {
+                      "valid": false
+                    }
+                  },
+                  {
+                    "transition": "cancelEdit"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "searchFound \u003e openView \u003e openEdit \u003e saveInvalid \u003e saveInvalid \u003e saveInvalid \u003e saveInvalid \u003e cancelEdit",
+              "path": [
+                "searchFound",
+                "openView",
+                "openEdit",
+                "saveInvalid",
+                "saveInvalid",
+                "saveInvalid",
+                "saveInvalid",
+                "cancelEdit"
+              ],
+              "witness": {
+                "start": {
+                  "state": "search",
+                  "values": {
+                    "exists": true,
+                    "outcome": "none",
+                    "revision": "original",
+                    "role": "editor"
+                  }
+                },
+                "steps": [
+                  {
+                    "transition": "searchFound"
+                  },
+                  {
+                    "transition": "openView"
+                  },
+                  {
+                    "transition": "openEdit"
+                  },
+                  {
+                    "transition": "saveInvalid",
+                    "input": {
+                      "valid": false
+                    }
+                  },
+                  {
+                    "transition": "saveInvalid",
+                    "input": {
+                      "valid": false
+                    }
+                  },
+                  {
+                    "transition": "saveInvalid",
+                    "input": {
+                      "valid": false
+                    }
+                  },
+                  {
+                    "transition": "saveInvalid",
+                    "input": {
+                      "valid": false
+                    }
+                  },
+                  {
+                    "transition": "cancelEdit"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "searchFound \u003e openView \u003e openEdit \u003e saveInvalid \u003e saveInvalid \u003e saveInvalid \u003e saveValid \u003e saveSucceeded",
+              "path": [
+                "searchFound",
+                "openView",
+                "openEdit",
+                "saveInvalid",
+                "saveInvalid",
+                "saveInvalid",
+                "saveValid",
+                "saveSucceeded"
+              ],
+              "witness": {
+                "start": {
+                  "state": "search",
+                  "values": {
+                    "exists": true,
+                    "outcome": "none",
+                    "revision": "original",
+                    "role": "editor"
+                  }
+                },
+                "steps": [
+                  {
+                    "transition": "searchFound"
+                  },
+                  {
+                    "transition": "openView"
+                  },
+                  {
+                    "transition": "openEdit"
+                  },
+                  {
+                    "transition": "saveInvalid",
+                    "input": {
+                      "valid": false
+                    }
+                  },
+                  {
+                    "transition": "saveInvalid",
+                    "input": {
+                      "valid": false
+                    }
+                  },
+                  {
+                    "transition": "saveInvalid",
+                    "input": {
+                      "valid": false
+                    }
+                  },
+                  {
+                    "transition": "saveValid",
+                    "input": {
+                      "valid": true
+                    }
+                  },
+                  {
+                    "transition": "saveSucceeded",
+                    "input": {
+                      "success": true
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "id": "searchFound \u003e openView \u003e openEdit \u003e saveInvalid \u003e saveInvalid \u003e saveValid \u003e saveFailed \u003e cancelEdit",
+              "path": [
+                "searchFound",
+                "openView",
+                "openEdit",
+                "saveInvalid",
+                "saveInvalid",
+                "saveValid",
+                "saveFailed",
+                "cancelEdit"
+              ],
+              "witness": {
+                "start": {
+                  "state": "search",
+                  "values": {
+                    "exists": true,
+                    "outcome": "none",
+                    "revision": "original",
+                    "role": "editor"
+                  }
+                },
+                "steps": [
+                  {
+                    "transition": "searchFound"
+                  },
+                  {
+                    "transition": "openView"
+                  },
+                  {
+                    "transition": "openEdit"
+                  },
+                  {
+                    "transition": "saveInvalid",
+                    "input": {
+                      "valid": false
+                    }
+                  },
+                  {
+                    "transition": "saveInvalid",
+                    "input": {
+                      "valid": false
+                    }
+                  },
+                  {
+                    "transition": "saveValid",
+                    "input": {
+                      "valid": true
+                    }
+                  },
+                  {
+                    "transition": "saveFailed",
+                    "input": {
+                      "success": false
+                    }
+                  },
+                  {
+                    "transition": "cancelEdit"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "searchFound \u003e openView \u003e openEdit \u003e saveInvalid \u003e saveInvalid \u003e saveValid \u003e saveSucceeded",
+              "path": [
+                "searchFound",
+                "openView",
+                "openEdit",
+                "saveInvalid",
+                "saveInvalid",
+                "saveValid",
+                "saveSucceeded"
+              ],
+              "witness": {
+                "start": {
+                  "state": "search",
+                  "values": {
+                    "exists": true,
+                    "outcome": "none",
+                    "revision": "original",
+                    "role": "editor"
+                  }
+                },
+                "steps": [
+                  {
+                    "transition": "searchFound"
+                  },
+                  {
+                    "transition": "openView"
+                  },
+                  {
+                    "transition": "openEdit"
+                  },
+                  {
+                    "transition": "saveInvalid",
+                    "input": {
+                      "valid": false
+                    }
+                  },
+                  {
+                    "transition": "saveInvalid",
+                    "input": {
+                      "valid": false
+                    }
+                  },
+                  {
+                    "transition": "saveValid",
+                    "input": {
+                      "valid": true
+                    }
+                  },
+                  {
+                    "transition": "saveSucceeded",
+                    "input": {
+                      "success": true
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "id": "searchFound \u003e openView \u003e openEdit \u003e saveInvalid \u003e saveValid \u003e saveFailed \u003e cancelEdit",
+              "path": [
+                "searchFound",
+                "openView",
+                "openEdit",
+                "saveInvalid",
+                "saveValid",
+                "saveFailed",
+                "cancelEdit"
+              ],
+              "witness": {
+                "start": {
+                  "state": "search",
+                  "values": {
+                    "exists": true,
+                    "outcome": "none",
+                    "revision": "original",
+                    "role": "editor"
+                  }
+                },
+                "steps": [
+                  {
+                    "transition": "searchFound"
+                  },
+                  {
+                    "transition": "openView"
+                  },
+                  {
+                    "transition": "openEdit"
+                  },
+                  {
+                    "transition": "saveInvalid",
+                    "input": {
+                      "valid": false
+                    }
+                  },
+                  {
+                    "transition": "saveValid",
+                    "input": {
+                      "valid": true
+                    }
+                  },
+                  {
+                    "transition": "saveFailed",
+                    "input": {
+                      "success": false
+                    }
+                  },
+                  {
+                    "transition": "cancelEdit"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "searchFound \u003e openView \u003e openEdit \u003e saveInvalid \u003e saveValid \u003e saveFailed \u003e saveInvalid \u003e cancelEdit",
+              "path": [
+                "searchFound",
+                "openView",
+                "openEdit",
+                "saveInvalid",
+                "saveValid",
+                "saveFailed",
+                "saveInvalid",
+                "cancelEdit"
+              ],
+              "witness": {
+                "start": {
+                  "state": "search",
+                  "values": {
+                    "exists": true,
+                    "outcome": "none",
+                    "revision": "original",
+                    "role": "editor"
+                  }
+                },
+                "steps": [
+                  {
+                    "transition": "searchFound"
+                  },
+                  {
+                    "transition": "openView"
+                  },
+                  {
+                    "transition": "openEdit"
+                  },
+                  {
+                    "transition": "saveInvalid",
+                    "input": {
+                      "valid": false
+                    }
+                  },
+                  {
+                    "transition": "saveValid",
+                    "input": {
+                      "valid": true
+                    }
+                  },
+                  {
+                    "transition": "saveFailed",
+                    "input": {
+                      "success": false
+                    }
+                  },
+                  {
+                    "transition": "saveInvalid",
+                    "input": {
+                      "valid": false
+                    }
+                  },
+                  {
+                    "transition": "cancelEdit"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "searchFound \u003e openView \u003e openEdit \u003e saveInvalid \u003e saveValid \u003e saveFailed \u003e saveValid \u003e saveSucceeded",
+              "path": [
+                "searchFound",
+                "openView",
+                "openEdit",
+                "saveInvalid",
+                "saveValid",
+                "saveFailed",
+                "saveValid",
+                "saveSucceeded"
+              ],
+              "witness": {
+                "start": {
+                  "state": "search",
+                  "values": {
+                    "exists": true,
+                    "outcome": "none",
+                    "revision": "original",
+                    "role": "editor"
+                  }
+                },
+                "steps": [
+                  {
+                    "transition": "searchFound"
+                  },
+                  {
+                    "transition": "openView"
+                  },
+                  {
+                    "transition": "openEdit"
+                  },
+                  {
+                    "transition": "saveInvalid",
+                    "input": {
+                      "valid": false
+                    }
+                  },
+                  {
+                    "transition": "saveValid",
+                    "input": {
+                      "valid": true
+                    }
+                  },
+                  {
+                    "transition": "saveFailed",
+                    "input": {
+                      "success": false
+                    }
+                  },
+                  {
+                    "transition": "saveValid",
+                    "input": {
+                      "valid": true
+                    }
+                  },
+                  {
+                    "transition": "saveSucceeded",
+                    "input": {
+                      "success": true
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "id": "searchFound \u003e openView \u003e openEdit \u003e saveValid \u003e saveFailed \u003e cancelEdit",
+              "path": [
+                "searchFound",
+                "openView",
+                "openEdit",
+                "saveValid",
+                "saveFailed",
+                "cancelEdit"
+              ],
+              "witness": {
+                "start": {
+                  "state": "search",
+                  "values": {
+                    "exists": true,
+                    "outcome": "none",
+                    "revision": "original",
+                    "role": "editor"
+                  }
+                },
+                "steps": [
+                  {
+                    "transition": "searchFound"
+                  },
+                  {
+                    "transition": "openView"
+                  },
+                  {
+                    "transition": "openEdit"
+                  },
+                  {
+                    "transition": "saveValid",
+                    "input": {
+                      "valid": true
+                    }
+                  },
+                  {
+                    "transition": "saveFailed",
+                    "input": {
+                      "success": false
+                    }
+                  },
+                  {
+                    "transition": "cancelEdit"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "searchFound \u003e openView \u003e openEdit \u003e saveValid \u003e saveFailed \u003e saveInvalid \u003e cancelEdit",
+              "path": [
+                "searchFound",
+                "openView",
+                "openEdit",
+                "saveValid",
+                "saveFailed",
+                "saveInvalid",
+                "cancelEdit"
+              ],
+              "witness": {
+                "start": {
+                  "state": "search",
+                  "values": {
+                    "exists": true,
+                    "outcome": "none",
+                    "revision": "original",
+                    "role": "editor"
+                  }
+                },
+                "steps": [
+                  {
+                    "transition": "searchFound"
+                  },
+                  {
+                    "transition": "openView"
+                  },
+                  {
+                    "transition": "openEdit"
+                  },
+                  {
+                    "transition": "saveValid",
+                    "input": {
+                      "valid": true
+                    }
+                  },
+                  {
+                    "transition": "saveFailed",
+                    "input": {
+                      "success": false
+                    }
+                  },
+                  {
+                    "transition": "saveInvalid",
+                    "input": {
+                      "valid": false
+                    }
+                  },
+                  {
+                    "transition": "cancelEdit"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "searchFound \u003e openView \u003e openEdit \u003e saveValid \u003e saveFailed \u003e saveInvalid \u003e saveInvalid \u003e cancelEdit",
+              "path": [
+                "searchFound",
+                "openView",
+                "openEdit",
+                "saveValid",
+                "saveFailed",
+                "saveInvalid",
+                "saveInvalid",
+                "cancelEdit"
+              ],
+              "witness": {
+                "start": {
+                  "state": "search",
+                  "values": {
+                    "exists": true,
+                    "outcome": "none",
+                    "revision": "original",
+                    "role": "editor"
+                  }
+                },
+                "steps": [
+                  {
+                    "transition": "searchFound"
+                  },
+                  {
+                    "transition": "openView"
+                  },
+                  {
+                    "transition": "openEdit"
+                  },
+                  {
+                    "transition": "saveValid",
+                    "input": {
+                      "valid": true
+                    }
+                  },
+                  {
+                    "transition": "saveFailed",
+                    "input": {
+                      "success": false
+                    }
+                  },
+                  {
+                    "transition": "saveInvalid",
+                    "input": {
+                      "valid": false
+                    }
+                  },
+                  {
+                    "transition": "saveInvalid",
+                    "input": {
+                      "valid": false
+                    }
+                  },
+                  {
+                    "transition": "cancelEdit"
+                  }
+                ]
+              }
+            },
+            {
+              "id": "searchFound \u003e openView \u003e openEdit \u003e saveValid \u003e saveFailed \u003e saveInvalid \u003e saveValid \u003e saveSucceeded",
+              "path": [
+                "searchFound",
+                "openView",
+                "openEdit",
+                "saveValid",
+                "saveFailed",
+                "saveInvalid",
+                "saveValid",
+                "saveSucceeded"
+              ],
+              "witness": {
+                "start": {
+                  "state": "search",
+                  "values": {
+                    "exists": true,
+                    "outcome": "none",
+                    "revision": "original",
+                    "role": "editor"
+                  }
+                },
+                "steps": [
+                  {
+                    "transition": "searchFound"
+                  },
+                  {
+                    "transition": "openView"
+                  },
+                  {
+                    "transition": "openEdit"
+                  },
+                  {
+                    "transition": "saveValid",
+                    "input": {
+                      "valid": true
+                    }
+                  },
+                  {
+                    "transition": "saveFailed",
+                    "input": {
+                      "success": false
+                    }
+                  },
+                  {
+                    "transition": "saveInvalid",
+                    "input": {
+                      "valid": false
+                    }
+                  },
+                  {
+                    "transition": "saveValid",
+                    "input": {
+                      "valid": true
+                    }
+                  },
+                  {
+                    "transition": "saveSucceeded",
+                    "input": {
+                      "success": true
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "id": "searchFound \u003e openView \u003e openEdit \u003e saveValid \u003e saveFailed \u003e saveValid \u003e saveFailed \u003e cancelEdit",
+              "path": [
+                "searchFound",
+                "openView",
+                "openEdit",
+                "saveValid",
+                "saveFailed",
+                "saveValid",
+                "saveFailed",
+                "cancelEdit"
+              ],
+              "witness": {
+                "start": {
+                  "state": "search",
+                  "values": {
+                    "exists": true,
+                    "outcome": "none",
+                    "revision": "original",
+                    "role": "editor"
+                  }
+                },
+                "steps": [
+                  {
+                    "transition": "searchFound"
+                  },
+                  {
+                    "transition": "openView"
+                  },
+                  {
+                    "transition": "openEdit"
+                  },
+                  {
+                    "transition": "saveValid",
+                    "input": {
+                      "valid": true
+                    }
+                  },
+                  {
+                    "transition": "saveFailed",
+                    "input": {
+                      "success": false
+                    }
+                  },
+                  {
+                    "transition": "saveValid",
+                    "input": {
+                      "valid": true
+                    }
+                  },
+                  {
+                    "transition": "saveFailed",
+                    "input": {
+                      "success": false
+                    }
+                  },
+                  {
+                    "transition": "cancelEdit"
+                  }
+                ]
+              }
+            }
+          ],
+          "note": "Complete transition-ID paths up to 8 transitions; data variants are merged here and checked by condition metrics separately."
+        },
+        {
+          "kind": "conditions",
+          "covered": 20,
+          "total": 20,
+          "percent": 100,
+          "complete": true,
+          "missing": [],
+          "note": "Logical truth of named conditions, at each transition guard evaluation (including false guards). Denominator: reachable state/event/input combinations, not arbitrary Boolean combinations; not runtime short-circuit coverage."
+        },
+        {
+          "kind": "multipleConditions",
+          "covered": 14,
+          "total": 14,
+          "percent": 100,
+          "complete": true,
+          "missing": [],
+          "note": "Logical truth of named conditions, at each transition guard evaluation (including false guards). Denominator: reachable state/event/input combinations, not arbitrary Boolean combinations; not runtime short-circuit coverage."
+        }
+      ],
+      "reachableStates": 11,
+      "complete": true
+    },
+    {
+      "id": "viewCustomer",
+      "coverage": [
+        {
+          "kind": "transitions",
+          "covered": 2,
+          "total": 2,
+          "percent": 100,
+          "complete": true,
+          "missing": [],
+          "note": "Control-state paths; data feasibility checked in the finite execution graph. Infeasible requirements are listed separately. Pairs have exactly two transitions."
+        },
+        {
+          "kind": "pairs",
+          "covered": 1,
+          "total": 1,
+          "percent": 100,
+          "complete": true,
+          "missing": [],
+          "note": "Control-state paths; data feasibility checked in the finite execution graph. Infeasible requirements are listed separately. Pairs have exactly two transitions."
+        },
+        {
+          "kind": "primePaths",
+          "covered": 1,
+          "total": 1,
+          "percent": 100,
+          "complete": true,
+          "missing": [],
+          "note": "Control-state paths; data feasibility checked in the finite execution graph. Infeasible requirements are listed separately. Pairs have exactly two transitions."
+        },
+        {
+          "kind": "boundedPaths",
+          "covered": 1,
+          "total": 1,
+          "percent": 100,
+          "complete": true,
+          "missing": [],
+          "note": "Complete transition-ID paths up to 8 transitions; data variants are merged here and checked by condition metrics separately."
+        },
+        {
+          "kind": "conditions",
+          "covered": 2,
+          "total": 2,
+          "percent": 100,
+          "complete": true,
+          "missing": [],
+          "note": "Logical truth of named conditions, at each transition guard evaluation (including false guards). Denominator: reachable state/event/input combinations, not arbitrary Boolean combinations; not runtime short-circuit coverage."
+        },
+        {
+          "kind": "multipleConditions",
+          "covered": 2,
+          "total": 2,
+          "percent": 100,
+          "complete": true,
+          "missing": [],
+          "note": "Logical truth of named conditions, at each transition guard evaluation (including false guards). Denominator: reachable state/event/input combinations, not arbitrary Boolean combinations; not runtime short-circuit coverage."
+        }
+      ],
+      "reachableStates": 6,
+      "complete": true
+    }
+  ],
+  "definitions": {
+    "conditions/canEdit": "ada877a1321f7f3829888d8f6f52cf2e97a0736beaf92d91218ebed484ae4ce4",
+    "conditions/exists": "67485edaa425b316019a7b827111e10a56574066c64ad85e5761bc9716387aec",
+    "conditions/inputValid": "7d671411d693fc578922b213f7c3803716bf54c807d2db790e84cbb9591767ea",
+    "conditions/operationSucceeded": "609223da06655d621f32a682078a09305577520961ac5d3efd35ac61baef1e0a",
+    "decisions/savePermissions": "f91fa85191eb8e9ef783d5f70543c9e3251b86a871bca0bd92de995aa673e273",
+    "events/back": "dde7874d350e4ffa245bf927e955f2215c57839c9eee41bc18eaed45d82ec8ed",
+    "events/cancelDelete": "f86437ac3a70228419417460763e36991949f818b879a4e81ed8a1e12a2d48eb",
+    "events/cancelEdit": "a2676a085d8629e01d57d826d23b9f729afc4965863d5972c272ceee64b6c0e4",
+    "events/confirmDelete": "4d288691c2b1ee1178bbee01ca401f8b2ebaa6b6747f1fb77d066edf4bf7dff5",
+    "events/deleteResult": "da0c009b0f2c8c6330201bb1176e2fdc1d83e91db9711b188303c3a76a98530a",
+    "events/edit": "db7618987f7aa2dfc906f56b6c9bc9a191f60c772c0c8b5ed7480893f947def4",
+    "events/open": "79492513b25a7376e5409e3e6f0d9476b34169f52d0b26c4d5ffffe710595c69",
+    "events/requestDelete": "5abc2d8e94877d501f3b7aacb7410981775da85975c9e1e96e27e55b3dd5f9f0",
+    "events/save": "5f3c69782e922eed60e796fd05f835aa80e0fb37eca918488454e7173f1f9c10",
+    "events/saveResult": "a411f7ef5fd9fbc93ae232d38041e3a26b42380e66f0160d59e8608d0e1f0401",
+    "events/search": "49c781427b82027ba55174509c4c0943b184f178ce0d0f7c45b83e1a33e4aae0",
+    "project": "c3701c10732923ef5e15a0378cb9524be8f7776ea23c1d2ded302ad9f57eacae",
+    "properties/canReturn": "238402550653bedadb247c19d87085602e2f7904ed8160caeb196988de275535",
+    "properties/deletePossible": "5edb5fae0bf7fed24d04fb66ff3fc4e1628dc5dc401d0bbeab2b685b5012aa27",
+    "properties/editableTarget": "a1bf8bac4b30895c17e35ab7120fc402c7b3039a43090d5408f9e4748dc34e5c",
+    "properties/noResurrection": "9beb4d1fcbab5f41ff071864050aec4cd22533d624715a37159531b101abedeb",
+    "properties/savePossible": "f5ed365241057dc97cb99a557f60b2151c9ce3d705f859f6e0f4a7ba95ce260f",
+    "regressions/deleteThenSearch": "2e19757f140332b702a34ca88ee5cd33cbd17ca43c77397ef67541412c909f2d",
+    "regressions/readerCannotEdit": "3a3644b29d268871c9f8fc33febece4ce564496f295da1e26fe6e029d2d21d2e",
+    "screens/delete": "940de2841cc3a8f0b98aa1d69e9795b999c8871ea79f1c68fffdc8587915ab9b",
+    "screens/edit": "6c43f071a27d5fba3f80d0c986cbbc4c84c293c7365593bf008772b33417b95c",
+    "screens/search": "f55cc305f7711c03c9ba7805321480b83ab2a706ff8e76aeb951385a122fc1f3",
+    "screens/view": "58b82fbc59138b8debef7317723984e1e7f46c29f1749e5be6630f99db00ab0a",
+    "states/confirming": "78bf31c54d26c9b1b7abdf3a562c832a7ee9c8034ceec3930482fa03d88ea768",
+    "states/deleting": "40925a104b669a371e4a5bc07fc66d1b7a200e08355766ccd3539d6bd054521f",
+    "states/editing": "d93301a7735a0caf91a65a9b6dc4c025af791aba30f918fffc646068b88095e8",
+    "states/results": "c1568542d7294de349bda3573e8a73c12afe4392a525613a9fecfce67f1c1dff",
+    "states/saving": "190ea493dbbce117636d29da7d8ca2b116c3c57018d53db76ab221b77d46ffff",
+    "states/search": "2f7d2730ceeba4ad5724d0d06a440de6be3f3bc9873416580139876b2ae4c710",
+    "states/view": "1808d66cc6775f20c232ce2ec2766c2bb6c2a0192f0eb4969dc0105854574d21",
+    "transitions/backResults": "a5c4b05400f02e7b90b8d4116505e1b4d5e03d58335521a60e1d8a01fe13db0d",
+    "transitions/cancelDelete": "f59a29240a9df6c858f7b84408a7260241f0629733f12f844f877978bdbfe5e4",
+    "transitions/cancelEdit": "3b6e6e4e8cadbe55441320bd5de48f8196df65e24c61d7b75eebf898bdfd97f7",
+    "transitions/confirmDelete": "b1ce729b32512fecf807dbf47e9388053c90b8b5e7fdfc7a2b81b6cc61a2d0d9",
+    "transitions/deleteFailed": "5a2fc66e01422aedc682b291c633b63abfe84fb0d1c6de7ef0f443a845561904",
+    "transitions/deleteSucceeded": "f3d51632dbf2f48904290fea17126cfd89ead2763978a5e16aaad6d8d91905eb",
+    "transitions/denyConfirm": "ebf4b30d38cf16a8ea51f674a1f97d8638ec55e88fa80efb4b1d24f2c6688395",
+    "transitions/denyDelete": "a4811b2c9f652aeca454259af8d9f4f77c0aba40b13b38777b6fa739a8280ed5",
+    "transitions/denyEdit": "2db19d0c0d43fdca909eb220baba20d2a6f3d78e11cf9aaa643ca95794364eef",
+    "transitions/openDelete": "d099a72e5f7e2c75ddb9f85ff1dcc96ce88258b5a2e2d3eb595dd7c17a68335c",
+    "transitions/openEdit": "74347cc7d8f10154c9cf4800647e4fbbe5c14fd71f108494d1f402755abdadac",
+    "transitions/openGone": "cc6b2c7bad0337ba97c8ba0022d5a7a1e351fe5dd0a5c9677b6118ea706890b1",
+    "transitions/openView": "1fc81363320507d970714677632606e1fe4c5abd3c899d139cfd86c01752aaa6",
+    "transitions/saveFailed": "5226908f22601cd6194b2a5c5f7891a3983ef09dac60013118c7359062896c90",
+    "transitions/saveInvalid": "538b1fb4c46b82b021a26f70f5ae381d34572fb894cfcddc5424ccc359b3d1b7",
+    "transitions/saveSucceeded": "591ba5493ecbe0d935673f9302730b7e36d22fa484224d929ce775b617df5eeb",
+    "transitions/saveValid": "a792bcac8210d67e6395a155f3e01f6364d86bacf005098d6abd20695ca91e97",
+    "transitions/searchAgain": "e2461e477aeb04d6c4ba399727724528e558d615ed6593e62145d857e44906bb",
+    "transitions/searchEmpty": "b91a4c5dd01784c093a9beb445505a4de687a811efcc067ca99d5b4c015f7bf6",
+    "transitions/searchFound": "d0f37932e0ad3fbf69825006859ef189216c20d7d12b28a12949b9edafab4f0c",
+    "transitions/searchGone": "82e88c3435f4cb08a62fc37aee1f107b5427418568e88f1db2292793de332491",
+    "usecases/deleteCustomer": "b16df037e9db46f4826cc7769ce79bc9688ea177c582d90d252e850b8147a57d",
+    "usecases/editCustomer": "1d34406ce3b346a83f7258af8491efa2480621221e66ee5db8efcafc155446cd",
+    "usecases/viewCustomer": "135351e897486ccb69463895ef9d8dd53ca4396ad4159526bc5e9c486f782ef0",
+    "variables/exists": "067c72011745f7907ee02ba776d4ba54097b9b87bc12308f94f3156be6e04c45",
+    "variables/outcome": "a5c6a67d4d7a1e878856741e13774b10894e2230731406340d331b5778519194",
+    "variables/revision": "f429652f57b86fce1138a2b3d1e21ccd421227113b0391ad24c304a4d698a06f",
+    "variables/role": "1de049af361131362e75921aee174f7876004d307669697a8bae5d60622c8d71"
+  },
+  "dependencies": {
+    "deleteCustomer": [
+      "conditions/canEdit",
+      "conditions/exists",
+      "conditions/inputValid",
+      "conditions/operationSucceeded",
+      "events/cancelDelete",
+      "events/confirmDelete",
+      "events/deleteResult",
+      "events/open",
+      "events/requestDelete",
+      "events/search",
+      "project",
+      "screens/delete",
+      "screens/search",
+      "screens/view",
+      "states/confirming",
+      "states/deleting",
+      "states/results",
+      "states/search",
+      "states/view",
+      "transitions/cancelDelete",
+      "transitions/confirmDelete",
+      "transitions/deleteFailed",
+      "transitions/deleteSucceeded",
+      "transitions/denyDelete",
+      "transitions/openDelete",
+      "transitions/openView",
+      "transitions/searchFound",
+      "usecases/deleteCustomer",
+      "variables/exists",
+      "variables/outcome",
+      "variables/revision",
+      "variables/role"
+    ],
+    "editCustomer": [
+      "conditions/canEdit",
+      "conditions/exists",
+      "conditions/inputValid",
+      "conditions/operationSucceeded",
+      "events/cancelEdit",
+      "events/edit",
+      "events/open",
+      "events/save",
+      "events/saveResult",
+      "events/search",
+      "project",
+      "screens/edit",
+      "screens/search",
+      "screens/view",
+      "states/editing",
+      "states/results",
+      "states/saving",
+      "states/search",
+      "states/view",
+      "transitions/cancelEdit",
+      "transitions/denyEdit",
+      "transitions/openEdit",
+      "transitions/openView",
+      "transitions/saveFailed",
+      "transitions/saveInvalid",
+      "transitions/saveSucceeded",
+      "transitions/saveValid",
+      "transitions/searchFound",
+      "usecases/editCustomer",
+      "variables/exists",
+      "variables/outcome",
+      "variables/revision",
+      "variables/role"
+    ],
+    "viewCustomer": [
+      "conditions/canEdit",
+      "conditions/exists",
+      "conditions/inputValid",
+      "conditions/operationSucceeded",
+      "events/open",
+      "events/search",
+      "project",
+      "screens/search",
+      "screens/view",
+      "states/results",
+      "states/search",
+      "states/view",
+      "transitions/openView",
+      "transitions/searchFound",
+      "usecases/viewCustomer",
+      "variables/exists",
+      "variables/outcome",
+      "variables/revision",
+      "variables/role"
+    ]
+  }
+}

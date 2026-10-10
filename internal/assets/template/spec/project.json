@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "1",
+  "name": "顧客管理サンプル",
+  "repository": "nuitsjp/usecase-spec",
+  "files": [
+    "model/*.json",
+    "usecases/*.json",
+    "checks/*.json"
+  ],
+  "output": "artifacts/usecase-spec",
+  "initial": [
+    {
+      "state": "search",
+      "values": {
+        "role": "editor"
+      }
+    },
+    {
+      "state": "search",
+      "values": {
+        "role": "reader"
+      }
+    },
+    {
+      "state": "search",
+      "values": {
+        "exists": false
+      }
+    }
+  ],
+  "limits": {
+    "states": 5000,
+    "steps": 8,
+    "paths": 100000,
+    "combinations": 256
+  },
+  "coverage": {
+    "transitions": 100,
+    "conditions": 100,
+    "multipleConditions": 100
+  }
+}

@@ -1,0 +1,292 @@
+{
+  "go": "go version go1.23.2 linux/amd64",
+  "core": {
+    "status": "passed",
+    "topLevelTests": 59,
+    "includingSubtests": 74,
+    "raceDetector": true,
+    "tests": [
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/model",
+        "test": "TestNormalizeDomainsAndDefaults"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/model",
+        "test": "TestStableHashAndCloning"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/engine",
+        "test": "TestExpressionOperators"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/engine",
+        "test": "TestExpressionRejectsInvalidData"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/engine",
+        "test": "TestLogicalCoverageDoesNotShortCircuit"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/engine",
+        "test": "TestAssignmentsAreSimultaneous"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/compiler",
+        "test": "TestRejectDuplicateAndTrailingJSON"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/compiler",
+        "test": "TestUnknownFields"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/engine",
+        "test": "TestInputDomainAndBudget"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/compiler",
+        "test": "TestCompilerFileEscape"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/compiler",
+        "test": "TestMergeDoesNotOverwrite"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/compiler",
+        "test": "TestRequiredReferences"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/compiler",
+        "test": "TestCompoundPredicateCannotHideCoverageAtoms"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/engine",
+        "test": "TestReplayRejectsWrongStartScopeAndExpectation"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/analysis",
+        "test": "TestPrimePathsLongSeparatedChoices"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/analysis",
+        "test": "TestPrimeCyclesAndBudget"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/project",
+        "test": "TestInitAndIdempotence"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/project",
+        "test": "TestInitConflictIsPreflighted"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/project",
+        "test": "TestInitDryRunDoesNotWrite"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/project",
+        "test": "TestInitCopiesBinaryAndPreservesRootGitignore"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/project",
+        "test": "TestSafePath"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/analysis",
+        "test": "TestSampleCoverageDenominators"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/analysis",
+        "test": "TestDeterminism"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/analysis",
+        "test": "TestThresholdFailure"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/analysis",
+        "test": "TestIncompleteIsNotPass"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/analysis",
+        "test": "TestImpossibleInvariantProducesWitness"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/analysis",
+        "test": "TestMissingEventBranch"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/analysis",
+        "test": "TestOverlappingGuards"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/analysis",
+        "test": "TestImpactAndInvalidatedScenario"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/analysis",
+        "test": "TestInvalidScenarioCannotCover"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/analysis",
+        "test": "TestCoverageEmptyNotHundred"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/analysis",
+        "test": "TestBoundedBudget"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/update",
+        "test": "TestVersions"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/update",
+        "test": "TestRepositoryValidation"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/update",
+        "test": "TestChecksum"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/update",
+        "test": "TestArchiveSafety"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/update",
+        "test": "TestArchiveSymlink"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/update",
+        "test": "TestResolveRelease"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/update",
+        "test": "TestHTTPErrorAndLimit"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/update",
+        "test": "TestRedirectPolicy"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/update",
+        "test": "TestReplaceAndLock"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/update",
+        "test": "TestProjectUpdatePinsOnlyAfterInstall"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/update",
+        "test": "TestReplaceSymlink"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/analysis",
+        "test": "TestUseCaseWithNoCompletionCannotPass"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/analysis",
+        "test": "TestRecoverableDoesNotClaimInevitableTermination"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/analysis",
+        "test": "TestSample"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/report",
+        "test": "TestStandaloneHTMLAndEscaping"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/report",
+        "test": "TestRendererRejectsBrokenLayout"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/report",
+        "test": "TestErrorPageEscapes"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/report",
+        "test": "TestModelAndReportRemainUnmodified"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/report",
+        "test": "TestLongJapaneseLabelsAndReservedLookingIDs"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/assets",
+        "test": "TestEmbeddedDocumentationMatchesSource"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/assets",
+        "test": "TestTemplateMatchesSampleSpecifications"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/app",
+        "test": "TestHelpVersionAndUnknownCommand"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/app",
+        "test": "TestCheckBuildAndPin"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/app",
+        "test": "TestBadInputAndLayoutCannotLeaveSuccessfulHTML"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/app",
+        "test": "TestInitCommandNoOverwrite"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/app",
+        "test": "TestCoverageFailureExitCode"
+      },
+      {
+        "package": "github.com/nuitsjp/usecase-spec/internal/app",
+        "test": "TestBaselineProducesImpact"
+      }
+    ]
+  },
+  "vet": {
+    "status": "passed",
+    "scope": "core packages only; excludes external adapters and cmd/ucspec"
+  },
+  "windowsCrossCompile": {
+    "status": "passed",
+    "targets": [
+      "internal/update test executable",
+      "internal/app test executable"
+    ],
+    "executed": false,
+    "productionCLI": false
+  },
+  "browser": {
+    "checks": [
+      "renderer: script CSP, usecase navigation, scenario table and SVG highlighting",
+      "renderer: missing-path candidate navigation",
+      "renderer: no JavaScript or CSP errors; layout engine itself is outside this test",
+      "sample: invalid name rejected",
+      "sample: save failure preserves input; retry succeeds",
+      "sample: delete failure, retry, and no resurrection on search",
+      "sample: reader cannot edit"
+    ],
+    "count": 7,
+    "errors": [],
+    "chromium": "144.0.7559.96",
+    "playwright": "1.57.0",
+    "method": "HTML injected with set_content; not file:// verification"
+  },
+  "schema": {
+    "status": "passed",
+    "engine": "independent Python JSON Schema validation",
+    "sampleFiles": 6,
+    "productionGoAdapterTested": false
+  },
+  "unverified": [
+    "production dependency restoration and go.sum generation",
+    "full go test ./...",
+    "elk-go placement and Go JSON Schema/YAML integration",
+    "Windows runtime and self-update replacement",
+    "PowerShell execution and GitHub Actions",
+    "GitHub repository creation/push and Release publication"
+  ],
+  "dependencyBlocker": "Container cannot resolve/reach proxy.golang.org; no production dependencies were downloaded.",
+  "important": "Fixture layout is used ONLY for renderer tests, never as production ELK fallback."
+}

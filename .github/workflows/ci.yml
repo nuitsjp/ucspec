@@ -1,0 +1,39 @@
+name: Windows verification
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27.x'
+          cache: false
+      - name: Restore, test real dependencies, build and render sample
+        shell: pwsh
+        run: ./scripts/build.ps1 -Repository '${{ github.repository }}'
+      - name: Test product onboarding with actual executable
+        shell: pwsh
+        run: |
+          $product = Join-Path $env:RUNNER_TEMP 'UCSPEC product with spaces'
+          ./dist/ucspec.exe init --dir $product --name 'CI Product' --repo '${{ github.repository }}'
+          if ($LASTEXITCODE -ne 0) { throw 'init failed' }
+          & (Join-Path $product 'scripts/ucspec.ps1') build
+          if ($LASTEXITCODE -ne 0) { throw 'product build failed' }
+      - name: Preserve diagnostics and generated dependency lock
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-verification
+          if-no-files-found: warn
+          path: |
+            go.sum
+            dist/BUILD-INFO.txt
+            examples/customer-crud/artifacts/usecase-spec/

@@ -1,0 +1,265 @@
+{
+  "schemaVersion": "1",
+  "usecases": {
+    "deleteCustomer": {
+      "name": "顧客を削除する",
+      "actor": "利用者",
+      "goal": "顧客の削除を確認して実行する",
+      "starts": [
+        {
+          "state": "search",
+          "values": {
+            "role": "editor"
+          }
+        },
+        {
+          "state": "search",
+          "values": {
+            "role": "reader"
+          }
+        }
+      ],
+      "end": {
+        "or": [
+          {
+            "eq": [
+              {
+                "var": "outcome"
+              },
+              "deleted"
+            ]
+          },
+          {
+            "eq": [
+              {
+                "var": "outcome"
+              },
+              "cancelled"
+            ]
+          },
+          {
+            "eq": [
+              {
+                "var": "outcome"
+              },
+              "denied"
+            ]
+          }
+        ]
+      },
+      "scope": [
+        "searchFound",
+        "openView",
+        "openDelete",
+        "denyDelete",
+        "confirmDelete",
+        "deleteSucceeded",
+        "deleteFailed",
+        "cancelDelete"
+      ],
+      "scenarios": {
+        "delete": {
+          "name": "削除を確定する",
+          "start": {
+            "state": "search",
+            "values": {
+              "role": "editor"
+            }
+          },
+          "steps": [
+            {
+              "transition": "searchFound"
+            },
+            {
+              "transition": "openView"
+            },
+            {
+              "transition": "openDelete"
+            },
+            {
+              "transition": "confirmDelete"
+            },
+            {
+              "transition": "deleteSucceeded",
+              "input": {
+                "success": true
+              }
+            }
+          ],
+          "expect": {
+            "and": [
+              {
+                "eq": [
+                  {
+                    "var": "exists"
+                  },
+                  false
+                ]
+              },
+              {
+                "eq": [
+                  {
+                    "var": "outcome"
+                  },
+                  "deleted"
+                ]
+              },
+              {
+                "eq": [
+                  {
+                    "var": "$state"
+                  },
+                  "search"
+                ]
+              }
+            ]
+          }
+        },
+        "cancel": {
+          "name": "削除を中止する",
+          "start": {
+            "state": "search",
+            "values": {
+              "role": "editor"
+            }
+          },
+          "steps": [
+            {
+              "transition": "searchFound"
+            },
+            {
+              "transition": "openView"
+            },
+            {
+              "transition": "openDelete"
+            },
+            {
+              "transition": "cancelDelete"
+            }
+          ],
+          "expect": {
+            "and": [
+              {
+                "eq": [
+                  {
+                    "var": "exists"
+                  },
+                  true
+                ]
+              },
+              {
+                "eq": [
+                  {
+                    "var": "outcome"
+                  },
+                  "cancelled"
+                ]
+              }
+            ]
+          }
+        },
+        "retry": {
+          "name": "削除失敗後に再試行する",
+          "start": {
+            "state": "search",
+            "values": {
+              "role": "editor"
+            }
+          },
+          "steps": [
+            {
+              "transition": "searchFound"
+            },
+            {
+              "transition": "openView"
+            },
+            {
+              "transition": "openDelete"
+            },
+            {
+              "transition": "confirmDelete"
+            },
+            {
+              "transition": "deleteFailed",
+              "input": {
+                "success": false
+              }
+            },
+            {
+              "transition": "openDelete"
+            },
+            {
+              "transition": "confirmDelete"
+            },
+            {
+              "transition": "deleteSucceeded",
+              "input": {
+                "success": true
+              }
+            }
+          ],
+          "expect": {
+            "and": [
+              {
+                "eq": [
+                  {
+                    "var": "exists"
+                  },
+                  false
+                ]
+              },
+              {
+                "eq": [
+                  {
+                    "var": "outcome"
+                  },
+                  "deleted"
+                ]
+              }
+            ]
+          }
+        },
+        "denied": {
+          "name": "閲覧権限では削除できない",
+          "start": {
+            "state": "search",
+            "values": {
+              "role": "reader"
+            }
+          },
+          "steps": [
+            {
+              "transition": "searchFound"
+            },
+            {
+              "transition": "openView"
+            },
+            {
+              "transition": "denyDelete"
+            }
+          ],
+          "expect": {
+            "and": [
+              {
+                "eq": [
+                  {
+                    "var": "exists"
+                  },
+                  true
+                ]
+              },
+              {
+                "eq": [
+                  {
+                    "var": "outcome"
+                  },
+                  "denied"
+                ]
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

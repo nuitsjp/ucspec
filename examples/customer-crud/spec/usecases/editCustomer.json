@@ -1,0 +1,330 @@
+{
+  "schemaVersion": "1",
+  "usecases": {
+    "editCustomer": {
+      "name": "顧客を変更する",
+      "actor": "利用者",
+      "goal": "顧客情報を変更し、結果を確認する",
+      "starts": [
+        {
+          "state": "search",
+          "values": {
+            "role": "editor"
+          }
+        },
+        {
+          "state": "search",
+          "values": {
+            "role": "reader"
+          }
+        }
+      ],
+      "end": {
+        "or": [
+          {
+            "eq": [
+              {
+                "var": "outcome"
+              },
+              "saved"
+            ]
+          },
+          {
+            "eq": [
+              {
+                "var": "outcome"
+              },
+              "cancelled"
+            ]
+          },
+          {
+            "eq": [
+              {
+                "var": "outcome"
+              },
+              "denied"
+            ]
+          }
+        ]
+      },
+      "scope": [
+        "searchFound",
+        "openView",
+        "openEdit",
+        "denyEdit",
+        "saveValid",
+        "saveInvalid",
+        "saveSucceeded",
+        "saveFailed",
+        "cancelEdit"
+      ],
+      "scenarios": {
+        "save": {
+          "name": "正常に保存する",
+          "start": {
+            "state": "search",
+            "values": {
+              "role": "editor"
+            }
+          },
+          "steps": [
+            {
+              "transition": "searchFound"
+            },
+            {
+              "transition": "openView"
+            },
+            {
+              "transition": "openEdit"
+            },
+            {
+              "transition": "saveValid",
+              "input": {
+                "valid": true
+              }
+            },
+            {
+              "transition": "saveSucceeded",
+              "input": {
+                "success": true
+              }
+            }
+          ],
+          "expect": {
+            "and": [
+              {
+                "eq": [
+                  {
+                    "var": "revision"
+                  },
+                  "updated"
+                ]
+              },
+              {
+                "eq": [
+                  {
+                    "var": "$state"
+                  },
+                  "view"
+                ]
+              },
+              {
+                "eq": [
+                  {
+                    "var": "outcome"
+                  },
+                  "saved"
+                ]
+              }
+            ]
+          }
+        },
+        "invalidThenSave": {
+          "name": "入力エラーを直して保存する",
+          "start": {
+            "state": "search",
+            "values": {
+              "role": "editor"
+            }
+          },
+          "steps": [
+            {
+              "transition": "searchFound"
+            },
+            {
+              "transition": "openView"
+            },
+            {
+              "transition": "openEdit"
+            },
+            {
+              "transition": "saveInvalid",
+              "input": {
+                "valid": false
+              }
+            },
+            {
+              "transition": "saveValid",
+              "input": {
+                "valid": true
+              }
+            },
+            {
+              "transition": "saveSucceeded",
+              "input": {
+                "success": true
+              }
+            }
+          ],
+          "expect": {
+            "and": [
+              {
+                "eq": [
+                  {
+                    "var": "revision"
+                  },
+                  "updated"
+                ]
+              },
+              {
+                "eq": [
+                  {
+                    "var": "outcome"
+                  },
+                  "saved"
+                ]
+              }
+            ]
+          }
+        },
+        "retry": {
+          "name": "保存失敗後に再試行する",
+          "start": {
+            "state": "search",
+            "values": {
+              "role": "editor"
+            }
+          },
+          "steps": [
+            {
+              "transition": "searchFound"
+            },
+            {
+              "transition": "openView"
+            },
+            {
+              "transition": "openEdit"
+            },
+            {
+              "transition": "saveValid",
+              "input": {
+                "valid": true
+              }
+            },
+            {
+              "transition": "saveFailed",
+              "input": {
+                "success": false
+              }
+            },
+            {
+              "transition": "saveValid",
+              "input": {
+                "valid": true
+              }
+            },
+            {
+              "transition": "saveSucceeded",
+              "input": {
+                "success": true
+              }
+            }
+          ],
+          "expect": {
+            "and": [
+              {
+                "eq": [
+                  {
+                    "var": "revision"
+                  },
+                  "updated"
+                ]
+              },
+              {
+                "eq": [
+                  {
+                    "var": "outcome"
+                  },
+                  "saved"
+                ]
+              }
+            ]
+          }
+        },
+        "cancel": {
+          "name": "変更を中止する",
+          "start": {
+            "state": "search",
+            "values": {
+              "role": "editor"
+            }
+          },
+          "steps": [
+            {
+              "transition": "searchFound"
+            },
+            {
+              "transition": "openView"
+            },
+            {
+              "transition": "openEdit"
+            },
+            {
+              "transition": "cancelEdit"
+            }
+          ],
+          "expect": {
+            "and": [
+              {
+                "eq": [
+                  {
+                    "var": "revision"
+                  },
+                  "original"
+                ]
+              },
+              {
+                "eq": [
+                  {
+                    "var": "outcome"
+                  },
+                  "cancelled"
+                ]
+              }
+            ]
+          }
+        },
+        "denied": {
+          "name": "閲覧権限では変更できない",
+          "start": {
+            "state": "search",
+            "values": {
+              "role": "reader"
+            }
+          },
+          "steps": [
+            {
+              "transition": "searchFound"
+            },
+            {
+              "transition": "openView"
+            },
+            {
+              "transition": "denyEdit"
+            }
+          ],
+          "expect": {
+            "and": [
+              {
+                "eq": [
+                  {
+                    "var": "$state"
+                  },
+                  "view"
+                ]
+              },
+              {
+                "eq": [
+                  {
+                    "var": "outcome"
+                  },
+                  "denied"
+                ]
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

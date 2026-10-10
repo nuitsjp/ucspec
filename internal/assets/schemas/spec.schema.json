@@ -1,0 +1,998 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ucspec.invalid/spec.schema.json",
+  "title": "UCSPEC structured specification v1",
+  "$defs": {
+    "expr": {
+      "oneOf": [
+        {
+          "type": [
+            "string",
+            "number",
+            "boolean"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "var": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "var"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "param": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "param"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "condition": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "condition"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "not": {
+              "$ref": "#/$defs/expr"
+            }
+          },
+          "required": [
+            "not"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "and": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/expr"
+              },
+              "minItems": 1
+            }
+          },
+          "required": [
+            "and"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "or": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/expr"
+              },
+              "minItems": 1
+            }
+          },
+          "required": [
+            "or"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "eq": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "$ref": "#/$defs/expr"
+                },
+                {
+                  "$ref": "#/$defs/expr"
+                }
+              ],
+              "minItems": 2,
+              "maxItems": 2
+            }
+          },
+          "required": [
+            "eq"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "ne": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "$ref": "#/$defs/expr"
+                },
+                {
+                  "$ref": "#/$defs/expr"
+                }
+              ],
+              "minItems": 2,
+              "maxItems": 2
+            }
+          },
+          "required": [
+            "ne"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "lt": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "$ref": "#/$defs/expr"
+                },
+                {
+                  "$ref": "#/$defs/expr"
+                }
+              ],
+              "minItems": 2,
+              "maxItems": 2
+            }
+          },
+          "required": [
+            "lt"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "le": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "$ref": "#/$defs/expr"
+                },
+                {
+                  "$ref": "#/$defs/expr"
+                }
+              ],
+              "minItems": 2,
+              "maxItems": 2
+            }
+          },
+          "required": [
+            "le"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "gt": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "$ref": "#/$defs/expr"
+                },
+                {
+                  "$ref": "#/$defs/expr"
+                }
+              ],
+              "minItems": 2,
+              "maxItems": 2
+            }
+          },
+          "required": [
+            "gt"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "ge": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "$ref": "#/$defs/expr"
+                },
+                {
+                  "$ref": "#/$defs/expr"
+                }
+              ],
+              "minItems": 2,
+              "maxItems": 2
+            }
+          },
+          "required": [
+            "ge"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "guard": {
+      "oneOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "condition": {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+            }
+          },
+          "required": [
+            "condition"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "not": {
+              "$ref": "#/$defs/guard"
+            }
+          },
+          "required": [
+            "not"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "and": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/guard"
+              },
+              "minItems": 1
+            }
+          },
+          "required": [
+            "and"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "or": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/guard"
+              },
+              "minItems": 1
+            }
+          },
+          "required": [
+            "or"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "snapshot": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+        },
+        "values": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+          },
+          "additionalProperties": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          }
+        }
+      },
+      "required": [
+        "state"
+      ],
+      "additionalProperties": false
+    },
+    "variable": {
+      "type": "object",
+      "properties": {
+        "domain": {
+          "type": "array",
+          "items": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "initial": {
+          "type": [
+            "string",
+            "number",
+            "boolean"
+          ]
+        },
+        "description": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "domain",
+        "initial"
+      ],
+      "additionalProperties": false
+    },
+    "screen": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "label"
+      ],
+      "additionalProperties": false
+    },
+    "state": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "screen": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        },
+        "terminal": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "label",
+        "screen",
+        "events"
+      ],
+      "additionalProperties": false
+    },
+    "event": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "enum": [
+            "user",
+            "system",
+            "timer"
+          ]
+        },
+        "parameters": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+          },
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": [
+                "string",
+                "number",
+                "boolean"
+              ]
+            },
+            "minItems": 1,
+            "uniqueItems": true
+          }
+        },
+        "when": {
+          "$ref": "#/$defs/expr"
+        }
+      },
+      "required": [
+        "label",
+        "source"
+      ],
+      "additionalProperties": false
+    },
+    "transition": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+        },
+        "to": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+        },
+        "event": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+        },
+        "guard": {
+          "$ref": "#/$defs/guard"
+        },
+        "action": {
+          "type": "string",
+          "minLength": 1
+        },
+        "set": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/expr"
+          }
+        },
+        "unownedReason": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "from",
+        "to",
+        "event",
+        "action"
+      ],
+      "additionalProperties": false
+    },
+    "step": {
+      "type": "object",
+      "properties": {
+        "transition": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+        },
+        "input": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+          },
+          "additionalProperties": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          }
+        },
+        "reject": {
+          "type": "boolean"
+        },
+        "expect": {
+          "$ref": "#/$defs/expr"
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "transition"
+      ],
+      "additionalProperties": false
+    },
+    "scenario": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string"
+        },
+        "start": {
+          "$ref": "#/$defs/snapshot"
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/step"
+          },
+          "minItems": 0
+        },
+        "expect": {
+          "$ref": "#/$defs/expr"
+        }
+      },
+      "required": [
+        "name",
+        "start",
+        "steps",
+        "expect"
+      ],
+      "additionalProperties": false
+    },
+    "usecase": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "goal": {
+          "type": "string",
+          "minLength": 1
+        },
+        "actor": {
+          "type": "string",
+          "minLength": 1
+        },
+        "starts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/snapshot"
+          },
+          "minItems": 1
+        },
+        "end": {
+          "$ref": "#/$defs/expr"
+        },
+        "scope": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "scenarios": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/scenario"
+          }
+        }
+      },
+      "required": [
+        "name",
+        "goal",
+        "actor",
+        "starts",
+        "end",
+        "scope",
+        "scenarios"
+      ],
+      "additionalProperties": false
+    },
+    "property": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": [
+            "invariant",
+            "reachable",
+            "recoverable"
+          ]
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "assert": {
+          "$ref": "#/$defs/expr"
+        }
+      },
+      "required": [
+        "kind",
+        "description",
+        "assert"
+      ],
+      "additionalProperties": false
+    },
+    "decisionCase": {
+      "type": "object",
+      "properties": {
+        "values": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+          },
+          "additionalProperties": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          }
+        },
+        "input": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+          },
+          "additionalProperties": {
+            "type": [
+              "string",
+              "number",
+              "boolean"
+            ]
+          }
+        },
+        "enabled": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "enabled"
+      ],
+      "additionalProperties": false
+    },
+    "decision": {
+      "type": "object",
+      "properties": {
+        "state": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+        },
+        "event": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+        },
+        "cases": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/decisionCase"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "state",
+        "event",
+        "cases"
+      ],
+      "additionalProperties": false
+    },
+    "document": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": "1"
+        },
+        "variables": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/variable"
+          }
+        },
+        "screens": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/screen"
+          }
+        },
+        "states": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/state"
+          }
+        },
+        "events": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/event"
+          }
+        },
+        "conditions": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/expr"
+          }
+        },
+        "transitions": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/transition"
+          }
+        },
+        "usecases": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/usecase"
+          }
+        },
+        "properties": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/property"
+          }
+        },
+        "decisions": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/decision"
+          }
+        },
+        "regressions": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/scenario"
+          }
+        }
+      },
+      "required": [
+        "schemaVersion"
+      ],
+      "additionalProperties": false,
+      "anyOf": [
+        {
+          "required": [
+            "variables"
+          ]
+        },
+        {
+          "required": [
+            "screens"
+          ]
+        },
+        {
+          "required": [
+            "states"
+          ]
+        },
+        {
+          "required": [
+            "events"
+          ]
+        },
+        {
+          "required": [
+            "conditions"
+          ]
+        },
+        {
+          "required": [
+            "transitions"
+          ]
+        },
+        {
+          "required": [
+            "usecases"
+          ]
+        },
+        {
+          "required": [
+            "properties"
+          ]
+        },
+        {
+          "required": [
+            "decisions"
+          ]
+        },
+        {
+          "required": [
+            "regressions"
+          ]
+        }
+      ]
+    },
+    "project": {
+      "type": "object",
+      "properties": {
+        "schemaVersion": {
+          "const": "1"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "repository": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9][A-Za-z0-9_.-]*$"
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1
+        },
+        "output": {
+          "type": "string",
+          "minLength": 1
+        },
+        "initial": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/snapshot"
+          },
+          "minItems": 1
+        },
+        "limits": {
+          "type": "object",
+          "properties": {
+            "states": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000000
+            },
+            "steps": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 256
+            },
+            "paths": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2000000
+            },
+            "combinations": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100000
+            }
+          },
+          "required": [
+            "states",
+            "steps",
+            "paths",
+            "combinations"
+          ],
+          "additionalProperties": false
+        },
+        "coverage": {
+          "type": "object",
+          "properties": {
+            "transitions": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "pairs": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "primePaths": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "boundedPaths": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "conditions": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "multipleConditions": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "schemaVersion",
+        "name",
+        "files",
+        "output",
+        "initial",
+        "limits",
+        "coverage"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "oneOf": [
+    {
+      "$ref": "#/$defs/project"
+    },
+    {
+      "$ref": "#/$defs/document"
+    }
+  ]
+}

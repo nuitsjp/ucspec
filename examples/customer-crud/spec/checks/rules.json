@@ -1,0 +1,347 @@
+{
+  "schemaVersion": "1",
+  "properties": {
+    "editableTarget": {
+      "kind": "invariant",
+      "description": "変更・保存・削除処理の実行状態では、対象が存在し編集権限がある。",
+      "assert": {
+        "or": [
+          {
+            "not": {
+              "or": [
+                {
+                  "eq": [
+                    {
+                      "var": "$state"
+                    },
+                    "editing"
+                  ]
+                },
+                {
+                  "eq": [
+                    {
+                      "var": "$state"
+                    },
+                    "saving"
+                  ]
+                },
+                {
+                  "eq": [
+                    {
+                      "var": "$state"
+                    },
+                    "confirming"
+                  ]
+                },
+                {
+                  "eq": [
+                    {
+                      "var": "$state"
+                    },
+                    "deleting"
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "and": [
+              {
+                "eq": [
+                  {
+                    "var": "exists"
+                  },
+                  true
+                ]
+              },
+              {
+                "eq": [
+                  {
+                    "var": "role"
+                  },
+                  "editor"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "noResurrection": {
+      "kind": "invariant",
+      "description": "削除済みの対象が閲覧・変更・削除画面に残らない。",
+      "assert": {
+        "or": [
+          {
+            "eq": [
+              {
+                "var": "exists"
+              },
+              true
+            ]
+          },
+          {
+            "eq": [
+              {
+                "var": "$state"
+              },
+              "search"
+            ]
+          }
+        ]
+      }
+    },
+    "savePossible": {
+      "kind": "reachable",
+      "description": "保存成功に到達する経路が存在する。",
+      "assert": {
+        "eq": [
+          {
+            "var": "outcome"
+          },
+          "saved"
+        ]
+      }
+    },
+    "deletePossible": {
+      "kind": "reachable",
+      "description": "削除成功に到達する経路が存在する。",
+      "assert": {
+        "eq": [
+          {
+            "var": "outcome"
+          },
+          "deleted"
+        ]
+      }
+    },
+    "canReturn": {
+      "kind": "recoverable",
+      "description": "各到達状態から検索結果または検索条件へ戻る経路がある（必ず終了する保証ではない）。",
+      "assert": {
+        "or": [
+          {
+            "eq": [
+              {
+                "var": "$state"
+              },
+              "results"
+            ]
+          },
+          {
+            "eq": [
+              {
+                "var": "$state"
+              },
+              "search"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "regressions": {
+    "deleteThenSearch": {
+      "name": "削除後に検索しても対象は復活しない",
+      "start": {
+        "state": "search"
+      },
+      "steps": [
+        {
+          "transition": "searchFound"
+        },
+        {
+          "transition": "openView"
+        },
+        {
+          "transition": "openDelete"
+        },
+        {
+          "transition": "confirmDelete"
+        },
+        {
+          "transition": "deleteSucceeded",
+          "input": {
+            "success": true
+          }
+        },
+        {
+          "transition": "searchEmpty"
+        }
+      ],
+      "expect": {
+        "and": [
+          {
+            "eq": [
+              {
+                "var": "exists"
+              },
+              false
+            ]
+          },
+          {
+            "eq": [
+              {
+                "var": "$state"
+              },
+              "search"
+            ]
+          },
+          {
+            "eq": [
+              {
+                "var": "outcome"
+              },
+              "empty"
+            ]
+          }
+        ]
+      }
+    },
+    "readerCannotEdit": {
+      "name": "閲覧者は変更開始遷移を実行できない",
+      "start": {
+        "state": "search",
+        "values": {
+          "role": "reader"
+        }
+      },
+      "steps": [
+        {
+          "transition": "searchFound"
+        },
+        {
+          "transition": "openView"
+        },
+        {
+          "transition": "openEdit",
+          "reject": true
+        }
+      ],
+      "expect": {
+        "and": [
+          {
+            "eq": [
+              {
+                "var": "$state"
+              },
+              "view"
+            ]
+          },
+          {
+            "eq": [
+              {
+                "var": "revision"
+              },
+              "original"
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "decisions": {
+    "savePermissions": {
+      "state": "editing",
+      "event": "save",
+      "cases": [
+        {
+          "values": {
+            "exists": true,
+            "role": "reader"
+          },
+          "input": {
+            "valid": true
+          },
+          "enabled": [
+            "saveInvalid"
+          ]
+        },
+        {
+          "values": {
+            "exists": true,
+            "role": "reader"
+          },
+          "input": {
+            "valid": false
+          },
+          "enabled": [
+            "saveInvalid"
+          ]
+        },
+        {
+          "values": {
+            "exists": true,
+            "role": "editor"
+          },
+          "input": {
+            "valid": true
+          },
+          "enabled": [
+            "saveValid"
+          ]
+        },
+        {
+          "values": {
+            "exists": true,
+            "role": "editor"
+          },
+          "input": {
+            "valid": false
+          },
+          "enabled": [
+            "saveInvalid"
+          ]
+        },
+        {
+          "values": {
+            "exists": false,
+            "role": "reader"
+          },
+          "input": {
+            "valid": true
+          },
+          "enabled": [
+            "saveInvalid"
+          ]
+        },
+        {
+          "values": {
+            "exists": false,
+            "role": "reader"
+          },
+          "input": {
+            "valid": false
+          },
+          "enabled": [
+            "saveInvalid"
+          ]
+        },
+        {
+          "values": {
+            "exists": false,
+            "role": "editor"
+          },
+          "input": {
+            "valid": true
+          },
+          "enabled": [
+            "saveInvalid"
+          ]
+        },
+        {
+          "values": {
+            "exists": false,
+            "role": "editor"
+          },
+          "input": {
+            "valid": false
+          },
+          "enabled": [
+            "saveInvalid"
+          ]
+        }
+      ]
+    }
+  }
+}

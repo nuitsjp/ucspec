@@ -1,0 +1,112 @@
+{
+  "schemaVersion": "1",
+  "usecases": {
+    "viewCustomer": {
+      "name": "顧客を閲覧する",
+      "actor": "利用者",
+      "goal": "対象の顧客情報を確認する",
+      "starts": [
+        {
+          "state": "search",
+          "values": {
+            "role": "editor"
+          }
+        },
+        {
+          "state": "search",
+          "values": {
+            "role": "reader"
+          }
+        }
+      ],
+      "end": {
+        "eq": [
+          {
+            "var": "$state"
+          },
+          "view"
+        ]
+      },
+      "scope": [
+        "searchFound",
+        "openView"
+      ],
+      "scenarios": {
+        "editor": {
+          "name": "顧客を閲覧する（editor）",
+          "start": {
+            "state": "search",
+            "values": {
+              "role": "editor"
+            }
+          },
+          "steps": [
+            {
+              "transition": "searchFound"
+            },
+            {
+              "transition": "openView"
+            }
+          ],
+          "expect": {
+            "and": [
+              {
+                "eq": [
+                  {
+                    "var": "$state"
+                  },
+                  "view"
+                ]
+              },
+              {
+                "eq": [
+                  {
+                    "var": "exists"
+                  },
+                  true
+                ]
+              }
+            ]
+          }
+        },
+        "reader": {
+          "name": "顧客を閲覧する（reader）",
+          "start": {
+            "state": "search",
+            "values": {
+              "role": "reader"
+            }
+          },
+          "steps": [
+            {
+              "transition": "searchFound"
+            },
+            {
+              "transition": "openView"
+            }
+          ],
+          "expect": {
+            "and": [
+              {
+                "eq": [
+                  {
+                    "var": "$state"
+                  },
+                  "view"
+                ]
+              },
+              {
+                "eq": [
+                  {
+                    "var": "exists"
+                  },
+                  true
+                ]
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

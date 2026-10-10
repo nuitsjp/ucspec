@@ -1,0 +1,11 @@
+/dist/
+/artifacts/
+/.tools/
+/validation/
+/examples/*/artifacts/
+*.exe
+*.test
+*.out
+*.prof
+*.previous
+*.update.lock
