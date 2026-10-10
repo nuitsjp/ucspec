@@ -7,3 +7,29 @@ run = [
   "go mod download",
   "go mod verify",
 ]
+
+[tasks.test]
+description = "全テストを実行する"
+run = "go test -count=1 ./..."
+
+[tasks.vet]
+description = "go vet で静的検査する"
+run = "go vet ./..."
+
+[tasks.build]
+description = "開発用の実行ファイルを dist/ucspec.exe に生成する"
+run = "go build -o dist/ucspec.exe ./cmd/ucspec"
+
+[tasks.sample]
+description = "サンプル仕様を検査し、HTML を examples/customer-crud/artifacts に生成する"
+run = "go run ./cmd/ucspec build --project examples/customer-crud/spec/project.json"
+
+[tasks.dist]
+description = "配布用ビルド（依存復元・テスト・vet・版埋め込みビルド・サンプル生成・ライセンス収集）"
+usage = 'flag "--ver <ver>" default="0.1.0" help="埋め込むバージョン (x.y.z)"'
+run = "pwsh -NoProfile -File scripts/build.ps1 -Version {{usage.ver}}"
+
+[tasks.package]
+description = "dist の成果物を配布用 ZIP とチェックサムにまとめる"
+usage = 'flag "--ver <ver>" default="0.1.0" help="梱包するバージョン (x.y.z)"'
+run = "pwsh -NoProfile -File scripts/package.ps1 -Version {{usage.ver}}"
