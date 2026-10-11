@@ -18,7 +18,7 @@ IDは英字で始まる英数字・`_`・`.`・`-`です。日本語はlabel/nam
   "files": ["model/*.json", "usecases/*.json", "checks/*.json"],
   "output": "artifacts/ucspec",
   "initial": [{"state":"search", "values":{"role":"editor"}}],
-  "limits": {"states":5000,"steps":8,"paths":100000,"combinations":256}
+  "limits": {"states":5000,"steps":10,"paths":100000,"combinations":256}
 }
 ```
 
@@ -84,12 +84,6 @@ DB、通信、実メール送信などのシステムエラー処理は、業務
 
 `commonRules`は有限性質を検査する`properties`とは別の、実装方針を共有する文章です。モデル検査は、システムエラー時の共通メッセージ、入力保持、原子的な確定などの実装を保証しません。実装に必要な有限の業務上の結果だけを状態・イベント・変数へ抽象化し、DBの内部状態や進捗表示を状態として追加しないでください。
 
-顧客管理サンプルの検索は、画面`search`で`search`/`open`イベントを受け付ける単一の末端状態です。検索条件と結果を同じ検索画面に表示します。`searchFound`（顧客あり）と`searchEmpty`（0件）は、`search`から`search`へのガード付き内部遷移として検索結果を更新します。`searched`というbool変数は検索実行済みだけを記録します。`open.when`は`searched`かつ`exists`（一覧に閲覧対象がある）で、`open`イベントは閲覧時点の存在確認結果を表す有限入力`exists`（`true`/`false`）を持ちます。`openCustomer`は入力値を現在の`exists`へ反映してから`customerAvailability`という選択疑似状態へ入り、`openView`は顧客ありなら`view`へ、`openGone`は顧客なしなら`search`へ戻って再検索とアラート表示を行います。この入力はユーザーが任意に選ぶ値ではなく、実DBを使わないサンプルで閲覧時の再確認を抽象化したものです。0件のアラートは`searchAlert`で検査します。検索前・0件・N件を子状態に分けず、状態が変わっても画面が変わるとは限りません。
-
-顧客管理サンプルは社内担当者が使うシステムとして、顧客検索を初期画面にします。参考アプリの左メニューは「顧客管理」「設定」への機能移動、仕様書の左メニューはパッケージ→ユースケース→シナリオの分類です。未更新の入力がある機能切り替え時の破棄確認と取消時の入力保持は横断回帰シナリオで確認します。削除確認中にメニューイベントが受け付けられないことは、独立した判定表で検査します。通信、実メール送信、永続化はモデル化しません。メニューイベントの`discard`は、未更新の入力を破棄して移動する場合を`true`、確認を取り消して入力を保持する場合を`false`として抽象化しています。未更新の入力がない場合は確認なしに移動できるため、`true`に対応します。
-
-設定は画面と状態が同名の`notificationSettings`という単一の末端状態です。下書きの編集を`editNotification`、更新を`updateNotification`、取消を`cancelNotification`で表し、いずれも同じ状態への自己遷移にします。通知の成功・失敗結果、進捗、再試行はモデル化しません。取消時は下書きを確定済みの値へ戻します。
-
 ### 複合状態と部分状態
 
 statesはIDで管理し、parentで親状態を指定します。子を持つ状態は複合状態で、そのinitialには直接の子状態を一つ指定します。複合状態へ入るとinitialをたどって末端状態に入ります。子を直接遷移先に指定することもできます。
@@ -125,49 +119,33 @@ choiceへ入る遷移は既存の`event`/`guard`/`action`/`set`をそのまま�
 ```json
 {
   "choices": {
-    "customerAvailability": {"label":"顧客の有無"}
+    "searchResult": {"label":"検索結果"}
   },
   "transitions": {
+    "searchCustomers": {
+      "defaultVisible": true,
+      "from":"search", "to":"searchResult", "event":"search",
+      "action":"顧客を検索する"
+    },
     "searchFound": {
       "defaultVisible": true,
-      "kind":"internal",
-      "from":"search", "to":"search", "event":"search",
+      "from":"searchResult", "to":"search",
       "guard":{"condition":"exists"}, "guardLabel":"1件以上",
       "action":"一覧を表示",
       "set":{"outcome":"none", "searched":true, "searchAlert":false}
     },
     "searchEmpty": {
       "defaultVisible": true,
-      "kind":"internal",
-      "from":"search", "to":"search", "event":"search",
+      "from":"searchResult", "to":"search",
       "guard":{"not":{"condition":"exists"}}, "guardLabel":"0件",
       "action":"アラートを表示",
-      "set":{"outcome":"empty", "searched":true, "searchAlert":true}
-    },
-    "openCustomer": {
-      "defaultVisible": true,
-      "from":"search", "to":"customerAvailability", "event":"open",
-      "action":"",
-      "set":{"exists":{"param":"exists"}}
-    },
-    "openView": {
-      "defaultVisible": true,
-      "from":"customerAvailability", "to":"view",
-      "guard":{"condition":"exists"}, "guardLabel":"顧客あり",
-      "action":"顧客を表示", "set":{"outcome":"viewed"}
-    },
-    "openGone": {
-      "defaultVisible": true,
-      "from":"customerAvailability", "to":"search",
-      "guard":{"not":{"condition":"exists"}}, "guardLabel":"顧客なし",
-      "action":"再検索してアラートを表示",
       "set":{"outcome":"empty", "searched":true, "searchAlert":true}
     }
   }
 }
 ```
 
-これは抜粋です。`exists`は`conditions`に定義します。`searchFound`と`searchEmpty`は同じ`search`状態に留まる内部遷移であり、通常の遷移IDとしてシナリオと網羅率へ含めます。`openCustomer`だけがイベントを持ってchoiceへ入り、`openView`または`openGone`の分岐を、内部の実行ステップとして別々に明示します。分岐側は入力を持たず、選んだガードに合わない構成ならシナリオは失敗します。
+これは抜粋です。`exists`は`conditions`に定義します。イベントを持つ遷移でchoiceへ入り、choiceから出る分岐を内部の実行ステップとして別々に明示します。分岐側は入力を持たず、選んだガードに合わない構成ならシナリオは失敗します。
 
 ### 条件と式
 
@@ -219,7 +197,7 @@ null、任意のGo/JavaScript、ファイル/APIアクセス、算術で無制�
 
 操作自体を利用不能にする場合はstate.eventsまたはevent.whenで表します。未定義だから無視する、という暗黙ルールはありません。
 
-サンプルの `system` イベントは外部処理の応答を有限値で表すものです。実API呼び出しやプロセス実行は行いません。
+`source`が`system`のイベントは外部処理の応答を有限値で表すものです。実API呼び出しやプロセス実行は行いません。
 
 ## ユースケースとシナリオ
 
@@ -241,8 +219,6 @@ null、任意のGo/JavaScript、ファイル/APIアクセス、算術で無制�
 
 一般例では、別ファイルのユースケースに`"package":"notifications"`を指定すると、その配下に表示します。パッケージは整理単位です。所属やネストによって状態遷移、`scope`、開始・終了条件、網羅率の分母は変わりません。パッケージ名や親の変更は、所属するユースケースへの変更影響に記録します。
 
-顧客管理サンプルでは、`customerManagement`（顧客管理）に`searchCustomer`（顧客検索）と顧客の閲覧・編集・削除を、`settings`（設定）に`updateNotifications`（顧客情報の更新通知設定）を所属させます。いずれもルートのパッケージです。深いネストは自然な業務分類としてサンプルへ追加せず、ネスト機能自体は一般例と検証用仕様で確認します。
-
 各シナリオ（regressionsを含む）には `name`、`goal`、`expectedOutcome` を空でない文章で記述します。`goal` は利用者が何のために実施するか、`expectedOutcome` はその目的に対して何が成立して終わるかです。完了画面の表示だけを期待結果にせず、保存された内容、取消時に維持される情報、権限によって保護される情報などを書きます。失敗・中止・拒否も、その場合の結果を明示します。
 
 人が読む `expectedOutcome` と機械検査する `expect` は別の項目です。前者は顧客との仕様確認や実装・E2Eテストの根拠、後者は有限モデル上の期待式です。文章の正しさ、実データの永続化、モデルと実装の一致はこの検査だけでは保証しません。HTMLでは目的と期待結果を操作列より先に表示します。
@@ -259,6 +235,7 @@ null、任意のGo/JavaScript、ファイル/APIアクセス、算術で無制�
     "expectedOutcome":"有効な入力で顧客情報が更新され、閲覧画面で更新結果を確認できる",
     "start":{"state":"search","values":{"role":"editor"}},
     "steps":[
+      {"transition":"searchCustomers"},
       {"transition":"searchFound"},
       {"transition":"openCustomer","input":{"exists":true}},
       {"transition":"openView"},

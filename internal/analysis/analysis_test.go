@@ -83,38 +83,40 @@ func TestSampleCoverageDenominators(t *testing.T) {
 			for _, c := range u.Coverage {
 				switch c.Kind {
 				case "transitions":
-					// Seven transitions remain after removing the permission-denial edge.
-					if c.Covered != 7 || c.Total != 7 {
+					// Eight transitions: the search action, its two result branches and the edit flow.
+					if c.Covered != 8 || c.Total != 8 {
 						t.Fatal(c)
 					}
 				case "primePaths":
-					// The permission-denial path is no longer part of the use-case scope.
-					if c.Covered != 5 || c.Total != 5 {
+					// Repeating the search is a prime cycle that no scenario covers.
+					if c.Covered != 5 || c.Total != 6 || !hasPath(c.Missing, "searchFound", "searchCustomers") {
 						t.Fatal(c)
 					}
 				case "boundedPaths":
-					// The unchanged eight-step bound yields fourteen finite paths;
+					// The ten-step bound yields ten finite paths;
 					// permission rejection is checked independently as a regression.
-					if c.Covered != 3 || c.Total != 14 {
+					if c.Covered != 3 || c.Total != 10 {
 						t.Fatal(c)
 					}
 				case "pairs":
-					if c.Covered != 6 || c.Total != 7 {
+					if c.Covered != 7 || c.Total != 8 {
 						t.Fatal(c)
 					}
-					found := false
-					for _, missing := range c.Missing {
-						if model.JSON(missing.Path) == model.JSON([]string{"searchFound", "searchFound"}) {
-							found = true
-						}
-					}
-					if !found {
+					if !hasPath(c.Missing, "searchFound", "searchCustomers") {
 						t.Fatal("repeated search pair must remain uncovered")
 					}
 				}
 			}
 		}
 	}
+}
+func hasPath(requirements []model.Requirement, path ...string) bool {
+	for _, r := range requirements {
+		if model.JSON(r.Path) == model.JSON(path) {
+			return true
+		}
+	}
+	return false
 }
 func TestDeterminism(t *testing.T) {
 	s := testkit.Sample(t)

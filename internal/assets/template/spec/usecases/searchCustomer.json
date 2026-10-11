@@ -41,6 +41,7 @@
         ]
       },
       "scope": [
+        "searchCustomers",
         "searchFound",
         "searchEmpty"
       ],
@@ -56,6 +57,9 @@
             }
           },
           "steps": [
+            {
+              "transition": "searchCustomers"
+            },
             {
               "transition": "searchFound",
               "expect": {
@@ -144,6 +148,9 @@
             }
           },
           "steps": [
+            {
+              "transition": "searchCustomers"
+            },
             {
               "transition": "searchEmpty",
               "expect": {

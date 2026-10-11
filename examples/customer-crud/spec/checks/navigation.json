@@ -10,6 +10,9 @@
       },
       "steps": [
         {
+          "transition": "searchCustomers"
+        },
+        {
           "transition": "searchFound"
         },
         {
@@ -233,6 +236,9 @@
       },
       "steps": [
         {
+          "transition": "searchCustomers"
+        },
+        {
           "transition": "searchFound"
         },
         {
@@ -302,6 +308,9 @@
         "state": "search"
       },
       "steps": [
+        {
+          "transition": "searchCustomers"
+        },
         {
           "transition": "searchFound"
         },

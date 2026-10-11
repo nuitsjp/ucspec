@@ -53,6 +53,7 @@
         ]
       },
       "scope": [
+        "searchCustomers",
         "searchFound",
         "openCustomer",
         "openView",
@@ -70,6 +71,9 @@
             }
           },
           "steps": [
+            {
+              "transition": "searchCustomers"
+            },
             {
               "transition": "searchFound",
               "expect": {
@@ -144,6 +148,9 @@
           },
           "steps": [
             {
+              "transition": "searchCustomers"
+            },
+            {
               "transition": "searchFound",
               "expect": {
                 "and": [
@@ -216,6 +223,9 @@
             }
           },
           "steps": [
+            {
+              "transition": "searchCustomers"
+            },
             {
               "transition": "searchFound"
             },

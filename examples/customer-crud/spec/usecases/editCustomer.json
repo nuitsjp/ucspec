@@ -61,6 +61,7 @@
         ]
       },
       "scope": [
+        "searchCustomers",
         "searchFound",
         "openCustomer",
         "openView",
@@ -81,6 +82,9 @@
             }
           },
           "steps": [
+            {
+              "transition": "searchCustomers"
+            },
             {
               "transition": "searchFound"
             },
@@ -187,6 +191,9 @@
           },
           "steps": [
             {
+              "transition": "searchCustomers"
+            },
+            {
               "transition": "searchFound"
             },
             {
@@ -260,6 +267,9 @@
             }
           },
           "steps": [
+            {
+              "transition": "searchCustomers"
+            },
             {
               "transition": "searchFound"
             },

@@ -51,6 +51,14 @@
         "empty"
       ],
       "initial": "none"
+    },
+    "confirmed": {
+      "domain": [
+        false,
+        true
+      ],
+      "initial": false,
+      "description": "削除確認で「はい」を選んだか。分岐後はfalseへ戻す。"
     }
   },
   "screens": {
@@ -66,8 +74,14 @@
     }
   },
   "choices": {
+    "searchResult": {
+      "label": "検索結果"
+    },
     "customerAvailability": {
       "label": "顧客の有無"
+    },
+    "deleteConfirmation": {
+      "label": "削除確認"
     }
   },
   "states": {
@@ -209,19 +223,24 @@
     "deleteConfirmed": {
       "eq": [
         {
-          "param": "confirmed"
+          "var": "confirmed"
         },
         true
       ]
     }
   },
   "transitions": {
-    "searchFound": {
+    "searchCustomers": {
       "defaultVisible": true,
       "from": "search",
-      "to": "search",
-      "kind": "internal",
+      "to": "searchResult",
       "event": "search",
+      "action": "顧客を検索する"
+    },
+    "searchFound": {
+      "defaultVisible": true,
+      "from": "searchResult",
+      "to": "search",
       "action": "一覧を表示",
       "guard": {
         "condition": "exists"
@@ -235,10 +254,8 @@
     },
     "searchEmpty": {
       "defaultVisible": true,
-      "from": "search",
+      "from": "searchResult",
       "to": "search",
-      "kind": "internal",
-      "event": "search",
       "action": "アラートを表示",
       "guard": {
         "not": {
@@ -360,65 +377,49 @@
         "outcome": "cancelled"
       }
     },
-    "confirmDelete": {
+    "requestDelete": {
       "defaultVisible": true,
       "from": "view",
-      "to": "search",
+      "to": "deleteConfirmation",
       "event": "requestDelete",
+      "action": "",
+      "set": {
+        "confirmed": {
+          "param": "confirmed"
+        }
+      }
+    },
+    "confirmDelete": {
+      "defaultVisible": true,
+      "from": "deleteConfirmation",
+      "to": "search",
       "action": "削除",
       "guard": {
-        "and": [
-          {
-            "and": [
-              {
-                "condition": "exists"
-              },
-              {
-                "condition": "canEdit"
-              }
-            ]
-          },
-          {
-            "condition": "deleteConfirmed"
-          }
-        ]
+        "condition": "deleteConfirmed"
       },
       "guardLabel": "はい",
       "set": {
         "searched": false,
         "exists": false,
-        "outcome": "deleted"
+        "outcome": "deleted",
+        "confirmed": false
       }
     },
     "cancelDelete": {
       "defaultVisible": true,
-      "from": "view",
+      "from": "deleteConfirmation",
       "to": "view",
-      "event": "requestDelete",
       "action": "",
-      "set": {
-        "outcome": "cancelled"
-      },
       "guard": {
-        "and": [
-          {
-            "and": [
-              {
-                "condition": "exists"
-              },
-              {
-                "condition": "canEdit"
-              }
-            ]
-          },
-          {
-            "not": {
-              "condition": "deleteConfirmed"
-            }
-          }
-        ]
+        "not": {
+          "condition": "deleteConfirmed"
+        }
       },
-      "guardLabel": "いいえ"
+      "guardLabel": "いいえ",
+      "set": {
+        "outcome": "cancelled",
+        "confirmed": false
+      }
     }
   }
 }

@@ -61,10 +61,12 @@
         ]
       },
       "scope": [
+        "searchCustomers",
         "searchFound",
         "openCustomer",
         "openView",
         "openGone",
+        "requestDelete",
         "confirmDelete",
         "cancelDelete"
       ],
@@ -81,6 +83,9 @@
           },
           "steps": [
             {
+              "transition": "searchCustomers"
+            },
+            {
               "transition": "searchFound"
             },
             {
@@ -91,6 +96,12 @@
             },
             {
               "transition": "openView"
+            },
+            {
+              "transition": "requestDelete",
+              "input": {
+                "confirmed": true
+              }
             },
             {
               "transition": "confirmDelete",
@@ -121,9 +132,6 @@
                     ]
                   }
                 ]
-              },
-              "input": {
-                "confirmed": true
               }
             }
           ],
@@ -176,6 +184,9 @@
           },
           "steps": [
             {
+              "transition": "searchCustomers"
+            },
+            {
               "transition": "searchFound"
             },
             {
@@ -188,10 +199,13 @@
               "transition": "openView"
             },
             {
-              "transition": "cancelDelete",
+              "transition": "requestDelete",
               "input": {
                 "confirmed": false
               }
+            },
+            {
+              "transition": "cancelDelete"
             }
           ],
           "expect": {
@@ -226,6 +240,9 @@
             }
           },
           "steps": [
+            {
+              "transition": "searchCustomers"
+            },
             {
               "transition": "searchFound"
             },

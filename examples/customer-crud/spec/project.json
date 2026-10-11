@@ -30,7 +30,7 @@
   ],
   "limits": {
     "states": 5000,
-    "steps": 8,
+    "steps": 10,
     "paths": 100000,
     "combinations": 256
   },

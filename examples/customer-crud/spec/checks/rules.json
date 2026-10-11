@@ -172,6 +172,9 @@
       },
       "steps": [
         {
+          "transition": "searchCustomers"
+        },
+        {
           "transition": "searchFound"
         },
         {
@@ -184,10 +187,16 @@
           "transition": "openView"
         },
         {
-          "transition": "confirmDelete",
+          "transition": "requestDelete",
           "input": {
             "confirmed": true
           }
+        },
+        {
+          "transition": "confirmDelete"
+        },
+        {
+          "transition": "searchCustomers"
         },
         {
           "transition": "searchEmpty"
@@ -242,6 +251,9 @@
       },
       "steps": [
         {
+          "transition": "searchCustomers"
+        },
+        {
           "transition": "searchFound"
         },
         {
@@ -290,6 +302,9 @@
         }
       },
       "steps": [
+        {
+          "transition": "searchCustomers"
+        },
         {
           "transition": "searchFound"
         },
@@ -423,6 +438,9 @@
       },
       "steps": [
         {
+          "transition": "searchCustomers"
+        },
+        {
           "transition": "searchFound"
         },
         {
@@ -488,6 +506,9 @@
       },
       "steps": [
         {
+          "transition": "searchCustomers"
+        },
+        {
           "transition": "searchFound"
         },
         {
@@ -500,7 +521,7 @@
           "transition": "openView"
         },
         {
-          "transition": "confirmDelete",
+          "transition": "requestDelete",
           "input": {
             "confirmed": true
           },
@@ -556,6 +577,9 @@
       },
       "steps": [
         {
+          "transition": "searchCustomers"
+        },
+        {
           "transition": "searchFound"
         },
         {
@@ -568,7 +592,7 @@
           "transition": "openView"
         },
         {
-          "transition": "confirmDelete",
+          "transition": "requestDelete",
           "input": {
             "confirmed": false
           },
@@ -614,9 +638,30 @@
     }
   },
   "decisions": {
-    "searchEntry": {
+    "searchCustomers": {
       "state": "search",
       "event": "search",
+      "cases": [
+        {
+          "values": {
+            "exists": true
+          },
+          "enabled": [
+            "searchCustomers"
+          ]
+        },
+        {
+          "values": {
+            "exists": false
+          },
+          "enabled": [
+            "searchCustomers"
+          ]
+        }
+      ]
+    },
+    "searchResult": {
+      "state": "searchResult",
       "cases": [
         {
           "values": {
@@ -775,7 +820,7 @@
         }
       ]
     },
-    "deleteConfirmation": {
+    "requestDelete": {
       "state": "view",
       "event": "requestDelete",
       "cases": [
@@ -788,7 +833,7 @@
             "confirmed": true
           },
           "enabled": [
-            "confirmDelete"
+            "requestDelete"
           ]
         },
         {
@@ -800,7 +845,7 @@
             "confirmed": false
           },
           "enabled": [
-            "cancelDelete"
+            "requestDelete"
           ]
         },
         {
@@ -862,6 +907,27 @@
             "confirmed": false
           },
           "enabled": []
+        }
+      ]
+    },
+    "deleteConfirmation": {
+      "state": "deleteConfirmation",
+      "cases": [
+        {
+          "values": {
+            "confirmed": true
+          },
+          "enabled": [
+            "confirmDelete"
+          ]
+        },
+        {
+          "values": {
+            "confirmed": false
+          },
+          "enabled": [
+            "cancelDelete"
+          ]
         }
       ]
     },

@@ -42,13 +42,17 @@ func TestSampleSearchUsesOneState(t *testing.T) {
 		t.Fatal("customer opened before search")
 	}
 	screen := s.States[st.State].Screen
-	for _, id := range []string{"searchFound", "searchFound"} {
-		st, _, err = e.Apply(st, id, nil)
+	for i := 0; i < 2; i++ {
+		st, _, err = e.Apply(st, "searchCustomers", nil)
+		if err != nil || st.State != "searchResult" || !s.IsChoice(st.State) {
+			t.Fatalf("search did not reach the search result choice: %+v, %v", st, err)
+		}
+		st, _, err = e.Apply(st, "searchFound", nil)
 		if err != nil {
-			t.Fatal(id, err)
+			t.Fatal(err)
 		}
 		if st.State != "search" || s.States[st.State].Screen != screen || !model.Equal(st.Values["searched"], true) {
-			t.Fatalf("%s changed search screen: %+v", id, st)
+			t.Fatalf("search changed search screen: %+v", st)
 		}
 		if !model.Equal(st.Values["searchAlert"], false) {
 			t.Fatal("nonempty search displayed an alert")
@@ -77,6 +81,10 @@ func TestSampleSearchUsesOneState(t *testing.T) {
 	st, err = s.Normalize(model.Snapshot{State: "search", Values: map[string]any{"exists": false}})
 	if err != nil {
 		t.Fatal(err)
+	}
+	st, _, err = e.Apply(st, "searchCustomers", nil)
+	if err != nil || st.State != "searchResult" {
+		t.Fatalf("empty search did not reach the search result choice: %+v, %v", st, err)
 	}
 	st, _, err = e.Apply(st, "searchEmpty", nil)
 	if err != nil || st.State != "search" || s.States[st.State].Screen != screen || !model.Equal(st.Values["outcome"], "empty") || !model.Equal(st.Values["searchAlert"], true) {
@@ -158,20 +166,28 @@ func TestSampleUpdateAndDeleteHaveNoProgressStates(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if s.Transitions["confirmDelete"].Event != "requestDelete" || s.Transitions["cancelDelete"].Event != "requestDelete" || s.Transitions["cancelDelete"].Action != "" {
-		t.Fatal("delete confirmation must branch on the same event with no cancellation action")
+	if s.Transitions["requestDelete"].Event != "requestDelete" || s.Transitions["requestDelete"].To != "deleteConfirmation" || !s.IsChoice("deleteConfirmation") || s.Transitions["cancelDelete"].Action != "" {
+		t.Fatal("delete must enter the confirmation choice by one event with no cancellation action")
 	}
-	if _, _, err := e.Apply(confirmation, "confirmDelete", map[string]any{"confirmed": false}); err == nil {
+	declined, _, err := e.Apply(confirmation, "requestDelete", map[string]any{"confirmed": false})
+	if err != nil || declined.State != "deleteConfirmation" {
+		t.Fatalf("declining delete did not reach the confirmation choice: %+v, %v", declined, err)
+	}
+	if _, _, err := e.Apply(declined, "confirmDelete", nil); err == nil {
 		t.Fatal("declining confirmation executed deletion")
 	}
-	cancelled, _, err := e.Apply(confirmation, "cancelDelete", map[string]any{"confirmed": false})
+	cancelled, _, err := e.Apply(declined, "cancelDelete", nil)
 	if err != nil || cancelled.State != "view" || !model.Equal(cancelled.Values["exists"], true) || !model.Equal(cancelled.Values["revision"], confirmation.Values["revision"]) {
 		t.Fatalf("declining confirmation changed the customer: %+v, %v", cancelled, err)
 	}
-	if _, _, err := e.Apply(confirmation, "cancelDelete", map[string]any{"confirmed": true}); err == nil {
+	accepted, _, err := e.Apply(confirmation, "requestDelete", map[string]any{"confirmed": true})
+	if err != nil || accepted.State != "deleteConfirmation" {
+		t.Fatalf("accepting delete did not reach the confirmation choice: %+v, %v", accepted, err)
+	}
+	if _, _, err := e.Apply(accepted, "cancelDelete", nil); err == nil {
 		t.Fatal("accepting confirmation enabled cancellation")
 	}
-	deleted, _, err := e.Apply(confirmation, "confirmDelete", map[string]any{"confirmed": true})
+	deleted, _, err := e.Apply(accepted, "confirmDelete", nil)
 	if err != nil || deleted.State != "search" || !model.Equal(deleted.Values["exists"], false) || !model.Equal(deleted.Values["outcome"], "deleted") {
 		t.Fatalf("confirmation did not delete and return to search: %+v, %v", deleted, err)
 	}
