@@ -3,7 +3,9 @@ package app
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/nuitsjp/usecase-spec/internal/assets"
 	"github.com/nuitsjp/usecase-spec/internal/compiler"
 	"github.com/nuitsjp/usecase-spec/internal/model"
@@ -87,6 +89,66 @@ func TestBadInputAndLayoutCannotLeaveSuccessfulHTML(t *testing.T) {
 	os.WriteFile(p, []byte("{invalid"), 0600)
 	if code, _ = run(t, dependencies(), "check", "--project", p); code != 2 {
 		t.Fatal(code)
+	}
+}
+
+func TestSourceLoadFailureReplacesConfiguredOutput(t *testing.T) {
+	for _, withBaseline := range []bool{false, true} {
+		t.Run(fmt.Sprintf("baseline=%t", withBaseline), func(t *testing.T) {
+			root := initialized(t)
+			p := filepath.Join(root, "spec/project.json")
+			cfg, err := compiler.ReadProject(p, compiler.JSONCodec())
+			if err != nil {
+				t.Fatal(err)
+			}
+			cfg.Output = "custom-report"
+			if err = os.WriteFile(p, []byte(model.JSON(cfg)), 0600); err != nil {
+				t.Fatal(err)
+			}
+			if code, out := run(t, dependencies(), "build", "--project", p); code != 0 {
+				t.Fatal(code, out)
+			}
+			output := filepath.Join(root, cfg.Output)
+			args := []string{"build", "--project", p}
+			if withBaseline {
+				b, err := os.ReadFile(filepath.Join(output, "report.json"))
+				if err != nil {
+					t.Fatal(err)
+				}
+				baseline := filepath.Join(root, "before.json")
+				if err = os.WriteFile(baseline, b, 0600); err != nil {
+					t.Fatal(err)
+				}
+				args = append(args, "--baseline", baseline)
+			}
+			if err = os.WriteFile(filepath.Join(root, "spec/model/customer.json"), []byte("{invalid"), 0600); err != nil {
+				t.Fatal(err)
+			}
+			if code, out := run(t, dependencies(), args...); code != 2 {
+				t.Fatal(code, out)
+			}
+			b, err := os.ReadFile(filepath.Join(output, "report.json"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			var result model.Report
+			if err = json.Unmarshal(b, &result); err != nil {
+				t.Fatal(err)
+			}
+			if result.Status != "failed" || result.Complete || len(result.Diagnostics) != 1 || result.Diagnostics[0].Code != "load" {
+				t.Errorf("stale successful report retained: status=%s complete=%t diagnostics=%v", result.Status, result.Complete, result.Diagnostics)
+			}
+			b, err = os.ReadFile(filepath.Join(output, "index.html"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Contains(b, []byte("仕様書生成に失敗しました")) {
+				t.Error("stale successful HTML retained")
+			}
+			if _, err = os.Stat(filepath.Join(root, "artifacts/usecase-spec")); !os.IsNotExist(err) {
+				t.Errorf("failure output redirected to default directory: %v", err)
+			}
+		})
 	}
 }
 func TestInitCommandNoOverwrite(t *testing.T) {

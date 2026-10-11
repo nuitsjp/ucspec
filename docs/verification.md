@@ -1,8 +1,27 @@
-# 初期ソース配布の検証記録
+# 検証記録
 
-この文書は、コードを作成したセッションで実際に実行した範囲を記録します。CI設定が存在することを、CIが実行済みであることとは扱いません。
+この文書は、実際に実行した検証を環境ごとに記録します。CI設定が存在することを、CIが実行済みであることとは扱いません。
 
-## 実行済み
+## 2026-10-11: Windowsでの修正検証
+
+実行環境は **Go 1.27.1 / Windows amd64** です。Go依存は既存キャッシュを使用し、`GOPROXY=off` と `GOTOOLCHAIN=local` で外部取得を禁止しました。`go.mod` と `go.sum` の変更はありません。
+
+| 検査 | 結果 |
+|---|---|
+| コアテスト | `scripts/test-core.ps1` 成功 |
+| 実依存を含む全Goテスト | `scripts/build.ps1` 内の `go test -count=1 ./...` 成功。実YAML・JSON Schema・elk-goとWindowsの実行中exe置換テストを含む |
+| 静的検査 | `go vet ./...` 成功 |
+| 配布ビルド | `scripts/build.ps1` 成功。版確認、実ELKのサンプルHTML生成、依存ライセンス収集を確認 |
+| プロダクト導入 | 空白を含むパスへ実CLIで初期化し、生成されたPowerShellランチャーからのbuild成功 |
+| 失敗時の出力 | 独自の出力先で成功後にモデルJSONを破損させ、`--baseline` 付きbuildが終了コード2を返し、同じ出力先のreport.jsonとHTMLを失敗結果へ置き換えることを確認 |
+| 修正の回帰テスト | CRLF・CRのCSP、スコープ外イベント分岐と開始状態への到達経路の変更影響、複数起点の完了経路を検査。修正前の失敗と修正後の合格を確認 |
+| HTMLブラウザースモーク | `scripts/test-browser.ps1` で実CLIが生成したHTMLのCSP・図・シナリオ・未網羅候補とサンプルCRUDの7項目が合格。CSPを壊した負例は終了コード1で失敗することを確認 |
+
+ブラウザー検証は **Node.js 24.21.0 / Playwright CLI 0.1.11 / Microsoft Edge 155.0.4283.45** で実行しました。記録は [Windowsブラウザー結果](verification/windows-browser-results.json) に保存しています。HTMLをUTF-8の生バイトから読み、元の改行を保持した文字列を `setContent` に渡しました。`file://` での直接表示は今回未検証です。Windows CIにも同じスモークテストを追加しましたが、GitHub Actionsで実行済みとは扱いません。
+
+GitHub Actionsの実行、実Releaseからのダウンロード・更新、パッケージZIPの作成は今回未実行です。全Goテストの合格はモデルと実アプリの一致を保証するものではありません。
+
+## 初期ソース作成時の実行済み範囲
 
 | 検査 | 結果 |
 |---|---|
@@ -19,7 +38,7 @@
 
 ブラウザーの管理設定でfile://読み込みが拒否されたため、ブラウザー試験ではHTML文字列を `set_content` で渡しました。WindowsでHTMLファイルをダブルクリックする動作の確認とは区別しています。
 
-## 未実行・未確認
+## 初期ソース作成時の未実行・未確認
 
 外部Goモジュールを取得するネットワークが利用できませんでした。`go mod download` はproxy.golang.orgの名前解決で失敗し、`go test ./...` は外部モジュールのgo.sumエントリーがない段階で停止しました。
 
@@ -40,7 +59,7 @@
 
 HTMLの単体試験だけは `testkit.FixtureLayout` に固定座標を与えています。これはGo製ELKの配置品質を検証したことにはなりません。productionのmainは必ずadapters.LayoutJSONを利用し、ELKの失敗時にfixtureへフォールバックしません。
 
-GitHub接続に新規リポジトリ作成操作がないため、**GitHub上のリポジトリ作成・初回pushは未実施**です。`scripts/publish-github.ps1` は利用者の認証済みGitHub CLIでこの操作を行うためのものです。
+初期ソース作成時は、GitHub接続に新規リポジトリ作成操作がなかったため、**GitHub上のリポジトリ作成・初回pushは未実施**でした。`scripts/publish-github.ps1` は利用者の認証済みGitHub CLIでこの操作を行うためのものです。
 
 ## 再実行
 

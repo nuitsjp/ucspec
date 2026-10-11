@@ -27,6 +27,16 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'init failed' }
           & (Join-Path $product 'scripts/ucspec.ps1') build
           if ($LASTEXITCODE -ne 0) { throw 'product build failed' }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.21.0'
+          cache: npm
+      - name: Install pinned browser test tools
+        shell: pwsh
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Test generated HTML and sample in Microsoft Edge
+        shell: pwsh
+        run: ./scripts/test-browser.ps1
       - name: Preserve diagnostics and generated dependency lock
         if: always()
         uses: actions/upload-artifact@v4
@@ -37,3 +47,4 @@ jobs:
             go.sum
             dist/BUILD-INFO.txt
             examples/customer-crud/artifacts/usecase-spec/
+            validation/browser/results.json

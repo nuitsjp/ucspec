@@ -2,6 +2,7 @@
 /artifacts/
 /.tools/
 /validation/
+/node_modules/
 /examples/*/artifacts/
 *.exe
 *.test

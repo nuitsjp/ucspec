@@ -267,6 +267,9 @@ func Build(s *model.Spec, r *model.Report, layout Layout, assets fs.FS) ([]byte,
 	if err != nil {
 		return nil, err
 	}
+	// HTML parsers normalize CRLF and CR before checking inline script hashes.
+	js = bytes.ReplaceAll(js, []byte("\r\n"), []byte("\n"))
+	js = bytes.ReplaceAll(js, []byte("\r"), []byte("\n"))
 	v.CSS = template.CSS(css)
 	v.JS = template.JS(js)
 	hash := sha256.Sum256(js)

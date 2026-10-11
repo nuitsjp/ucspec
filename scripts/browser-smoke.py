@@ -18,7 +18,7 @@ with sync_playwright() as p:
  errors=[]
  page.on('pageerror',lambda e: errors.append(str(e)))
  page.on('console',lambda msg:errors.append(msg.text) if msg.type=='error' else None)
- page.set_content(args.report.read_text(encoding='utf-8'), wait_until='load')
+ page.set_content(args.report.read_bytes().decode('utf-8'), wait_until='load')
  assert page.locator('#nav button').count()==4
  page.locator('[data-uc="editCustomer"]').click()
  assert page.locator('#scenario-list button').count()==5

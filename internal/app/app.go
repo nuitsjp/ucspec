@@ -196,7 +196,7 @@ func inspect(command string, args []string, out, errOut io.Writer, d Dependencie
 	} else {
 		r = analysis.Analyze(s, d.Version)
 	}
-	if *baseline != "" {
+	if *baseline != "" && compileErr == nil {
 		b, e := os.ReadFile(*baseline)
 		if e != nil {
 			return fail(errOut, e)

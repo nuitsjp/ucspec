@@ -1,0 +1,7 @@
+{
+  "name": "ucspec-browser-tests",
+  "private": true,
+  "devDependencies": {
+    "@playwright/cli": "0.1.11"
+  }
+}
