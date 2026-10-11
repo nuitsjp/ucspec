@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "1",
+  "usecasePackages": {
+    "customerManagement": {
+      "name": "顧客管理"
+    },
+    "settings": {
+      "name": "設定"
+    }
+  }
+}

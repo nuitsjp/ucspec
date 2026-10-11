@@ -1,9 +1,9 @@
 package engine_test
 
 import (
-	"github.com/nuitsjp/usecase-spec/internal/engine"
-	"github.com/nuitsjp/usecase-spec/internal/model"
-	"github.com/nuitsjp/usecase-spec/internal/testkit"
+	"github.com/nuitsjp/ucspec/internal/engine"
+	"github.com/nuitsjp/ucspec/internal/model"
+	"github.com/nuitsjp/ucspec/internal/testkit"
 	"testing"
 )
 

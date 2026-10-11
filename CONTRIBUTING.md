@@ -36,6 +36,8 @@ go vet ./...
 
 `docs/authoring.md` と `docs/user-manual.md` は `internal/assets/authoring.md` / `manual.md` に同じ内容を置きます。buildスクリプトはこの同期を確認します。サンプル仕様とinitテンプレートも同期しておきます。
 
+プロジェクト用スキルの正本は `.agents/skills/ucspec-authoring/SKILL.md` です。`internal/assets/ucspec-authoring-skill.md` を同じ内容に保ち、埋め込み資産の同期テストで検査します。
+
 テスト用モデルの追加は小さく、結果を人が手計算できる形を優先します。形式的にもっともらしい名前だけで新しい検証を追加しないでください。
 
 ## ブラウザースモークテスト

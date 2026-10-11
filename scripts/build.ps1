@@ -1,6 +1,6 @@
 param(
     [string]$Version = '0.1.0',
-    [string]$Repository = 'nuitsjp/usecase-spec'
+    [string]$Repository = 'nuitsjp/ucspec'
 )
 $ErrorActionPreference = 'Stop'
 if ($env:OS -ne 'Windows_NT') { throw 'This release build script targets Windows amd64.' }
@@ -29,7 +29,7 @@ try {
     go vet ./...
     if ($LASTEXITCODE -ne 0) { throw 'go vet failed.' }
     New-Item -ItemType Directory -Force -Path dist | Out-Null
-    $ldflags = "-s -w -X github.com/nuitsjp/usecase-spec/internal/buildinfo.Version=$Version -X github.com/nuitsjp/usecase-spec/internal/buildinfo.Repository=$Repository"
+    $ldflags = "-s -w -X github.com/nuitsjp/ucspec/internal/buildinfo.Version=$Version -X github.com/nuitsjp/ucspec/internal/buildinfo.Repository=$Repository"
     go build -mod=readonly -trimpath -ldflags $ldflags -o dist/ucspec.exe ./cmd/ucspec
     if ($LASTEXITCODE -ne 0) { throw 'Build failed.' }
     $info = & .\dist\ucspec.exe version --json | ConvertFrom-Json
@@ -60,7 +60,7 @@ try {
     $goRoot = (go env GOROOT).Trim()
     Copy-Item -LiteralPath (Join-Path $goRoot 'LICENSE') -Destination (Join-Path $notice 'Go-LICENSE')
     [IO.File]::WriteAllLines((Join-Path $root 'dist/SOURCES.txt'),$sources,[Text.UTF8Encoding]::new($false))
-    $buildInfo = @("UCSPEC $Version", "Repository $Repository", (go version), (go version -m dist/ucspec.exe))
+    $buildInfo = @("ucspec $Version", "Repository $Repository", (go version), (go version -m dist/ucspec.exe))
     [IO.File]::WriteAllLines((Join-Path $root 'dist/BUILD-INFO.txt'),$buildInfo,[Text.UTF8Encoding]::new($false))
     Write-Host 'Built and tested: dist/ucspec.exe'
     Write-Host 'Commit the generated go.sum before tagging a release.'

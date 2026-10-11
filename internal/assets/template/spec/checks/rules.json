@@ -3,45 +3,12 @@
   "properties": {
     "editableTarget": {
       "kind": "invariant",
-      "description": "変更・保存・削除処理の実行状態では、対象が存在し編集権限がある。",
+      "description": "編集状態では、対象が存在し編集権限がある。",
       "assert": {
         "or": [
           {
             "not": {
-              "or": [
-                {
-                  "eq": [
-                    {
-                      "var": "$state"
-                    },
-                    "editing"
-                  ]
-                },
-                {
-                  "eq": [
-                    {
-                      "var": "$state"
-                    },
-                    "saving"
-                  ]
-                },
-                {
-                  "eq": [
-                    {
-                      "var": "$state"
-                    },
-                    "confirming"
-                  ]
-                },
-                {
-                  "eq": [
-                    {
-                      "var": "$state"
-                    },
-                    "deleting"
-                  ]
-                }
-              ]
+              "inState": "edit"
             }
           },
           {
@@ -69,7 +36,7 @@
     },
     "noResurrection": {
       "kind": "invariant",
-      "description": "削除済みの対象が閲覧・変更・削除画面に残らない。",
+      "description": "削除済みの対象が閲覧・編集・削除画面に残らない。",
       "assert": {
         "or": [
           {
@@ -81,25 +48,29 @@
             ]
           },
           {
-            "eq": [
-              {
-                "var": "$state"
-              },
-              "search"
-            ]
+            "not": {
+              "or": [
+                {
+                  "inState": "view"
+                },
+                {
+                  "inState": "edit"
+                }
+              ]
+            }
           }
         ]
       }
     },
-    "savePossible": {
+    "updatePossible": {
       "kind": "reachable",
-      "description": "保存成功に到達する経路が存在する。",
+      "description": "更新成功に到達する経路が存在する。",
       "assert": {
         "eq": [
           {
             "var": "outcome"
           },
-          "saved"
+          "updated"
         ]
       }
     },
@@ -117,23 +88,74 @@
     },
     "canReturn": {
       "kind": "recoverable",
-      "description": "各到達状態から検索結果または検索条件へ戻る経路がある（必ず終了する保証ではない）。",
+      "description": "各到達状態から検索画面へ戻る経路がある（必ず終了する保証ではない）。",
+      "assert": {
+        "inState": "search"
+      }
+    },
+    "searchAlertMatchesResult": {
+      "kind": "invariant",
+      "description": "検索実行後に検索画面で表示するアラートは、検索結果が0件の場合だけである。",
       "assert": {
         "or": [
           {
-            "eq": [
-              {
-                "var": "$state"
-              },
-              "results"
-            ]
+            "not": {
+              "and": [
+                {
+                  "eq": [
+                    {
+                      "var": "$state"
+                    },
+                    "search"
+                  ]
+                },
+                {
+                  "eq": [
+                    {
+                      "var": "searched"
+                    },
+                    true
+                  ]
+                }
+              ]
+            }
           },
           {
             "eq": [
               {
-                "var": "$state"
+                "var": "searchAlert"
               },
-              "search"
+              {
+                "not": {
+                  "var": "exists"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "deletionRequiresPermission": {
+      "kind": "invariant",
+      "description": "削除が確定した結果には編集権限が必要である。",
+      "assert": {
+        "or": [
+          {
+            "not": {
+              "eq": [
+                {
+                  "var": "outcome"
+                },
+                "deleted"
+              ]
+            }
+          },
+          {
+            "eq": [
+              {
+                "var": "role"
+              },
+              "editor"
             ]
           }
         ]
@@ -143,6 +165,8 @@
   "regressions": {
     "deleteThenSearch": {
       "name": "削除後に検索しても対象は復活しない",
+      "goal": "削除した顧客が再検索しても管理対象へ戻らないことを確認する",
+      "expectedOutcome": "削除後に検索しても対象顧客は見つからず、削除状態を維持して0件アラートを表示する",
       "start": {
         "state": "search"
       },
@@ -151,18 +175,18 @@
           "transition": "searchFound"
         },
         {
+          "transition": "openCustomer",
+          "input": {
+            "exists": true
+          }
+        },
+        {
           "transition": "openView"
         },
         {
-          "transition": "openDelete"
-        },
-        {
-          "transition": "confirmDelete"
-        },
-        {
-          "transition": "deleteSucceeded",
+          "transition": "confirmDelete",
           "input": {
-            "success": true
+            "confirmed": true
           }
         },
         {
@@ -194,12 +218,22 @@
               },
               "empty"
             ]
+          },
+          {
+            "eq": [
+              {
+                "var": "searchAlert"
+              },
+              true
+            ]
           }
         ]
       }
     },
     "readerCannotEdit": {
-      "name": "閲覧者は変更開始遷移を実行できない",
+      "name": "閲覧者は編集開始遷移を実行できない",
+      "goal": "閲覧者が編集開始を直接要求しても顧客情報を保護する",
+      "expectedOutcome": "編集開始は拒否され、顧客閲覧画面と元の顧客情報が維持される",
       "start": {
         "state": "search",
         "values": {
@@ -209,6 +243,12 @@
       "steps": [
         {
           "transition": "searchFound"
+        },
+        {
+          "transition": "openCustomer",
+          "input": {
+            "exists": true
+          }
         },
         {
           "transition": "openView"
@@ -238,12 +278,418 @@
           }
         ]
       }
+    },
+    "invalidInputCannotUpdate": {
+      "name": "入力不備では更新せず、修正後に更新する",
+      "goal": "入力の不備を修正してから正しい顧客情報へ更新する",
+      "expectedOutcome": "入力不備の間は編集画面に留まって元の顧客情報を保持し、修正後の有効な入力で更新して閲覧画面へ戻る",
+      "start": {
+        "state": "search",
+        "values": {
+          "role": "editor"
+        }
+      },
+      "steps": [
+        {
+          "transition": "searchFound"
+        },
+        {
+          "transition": "openCustomer",
+          "input": {
+            "exists": true
+          }
+        },
+        {
+          "transition": "openView"
+        },
+        {
+          "transition": "openEdit",
+          "expect": {
+            "and": [
+              {
+                "inState": "edit"
+              },
+              {
+                "eq": [
+                  {
+                    "var": "$state"
+                  },
+                  "edit"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "transition": "updateCustomer",
+          "input": {
+            "valid": false
+          },
+          "reject": true,
+          "expect": {
+            "and": [
+              {
+                "eq": [
+                  {
+                    "var": "$state"
+                  },
+                  "edit"
+                ]
+              },
+              {
+                "eq": [
+                  {
+                    "var": "revision"
+                  },
+                  "original"
+                ]
+              },
+              {
+                "eq": [
+                  {
+                    "var": "outcome"
+                  },
+                  "none"
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "transition": "updateCustomer",
+          "input": {
+            "valid": true
+          },
+          "expect": {
+            "and": [
+              {
+                "eq": [
+                  {
+                    "var": "$state"
+                  },
+                  "view"
+                ]
+              },
+              {
+                "eq": [
+                  {
+                    "var": "revision"
+                  },
+                  "updated"
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "expect": {
+        "and": [
+          {
+            "eq": [
+              {
+                "var": "$state"
+              },
+              "view"
+            ]
+          },
+          {
+            "eq": [
+              {
+                "var": "revision"
+              },
+              "updated"
+            ]
+          },
+          {
+            "eq": [
+              {
+                "var": "outcome"
+              },
+              "updated"
+            ]
+          }
+        ]
+      }
+    },
+    "editCustomer_denied": {
+      "name": "閲覧権限では編集できない",
+      "goal": "閲覧権限の利用者による顧客情報の編集を防ぐ",
+      "expectedOutcome": "編集開始イベントを受理せず、顧客閲覧画面、対象顧客、元の情報と閲覧結果を保持する",
+      "start": {
+        "state": "search",
+        "values": {
+          "role": "reader"
+        }
+      },
+      "steps": [
+        {
+          "transition": "searchFound"
+        },
+        {
+          "transition": "openCustomer",
+          "input": {
+            "exists": true
+          }
+        },
+        {
+          "transition": "openView"
+        },
+        {
+          "transition": "openEdit",
+          "reject": true
+        }
+      ],
+      "expect": {
+        "and": [
+          {
+            "eq": [
+              {
+                "var": "$state"
+              },
+              "view"
+            ]
+          },
+          {
+            "eq": [
+              {
+                "var": "exists"
+              },
+              true
+            ]
+          },
+          {
+            "eq": [
+              {
+                "var": "revision"
+              },
+              "original"
+            ]
+          },
+          {
+            "eq": [
+              {
+                "var": "outcome"
+              },
+              "viewed"
+            ]
+          }
+        ]
+      }
+    },
+    "deleteCustomer_denied": {
+      "name": "閲覧権限では削除できない",
+      "goal": "閲覧権限の利用者による顧客情報の削除を防ぐ",
+      "expectedOutcome": "削除イベントを受理せず、顧客閲覧画面、対象顧客、元の情報と閲覧結果を保持する",
+      "start": {
+        "state": "search",
+        "values": {
+          "role": "reader"
+        }
+      },
+      "steps": [
+        {
+          "transition": "searchFound"
+        },
+        {
+          "transition": "openCustomer",
+          "input": {
+            "exists": true
+          }
+        },
+        {
+          "transition": "openView"
+        },
+        {
+          "transition": "confirmDelete",
+          "input": {
+            "confirmed": true
+          },
+          "reject": true
+        }
+      ],
+      "expect": {
+        "and": [
+          {
+            "eq": [
+              {
+                "var": "$state"
+              },
+              "view"
+            ]
+          },
+          {
+            "eq": [
+              {
+                "var": "exists"
+              },
+              true
+            ]
+          },
+          {
+            "eq": [
+              {
+                "var": "revision"
+              },
+              "original"
+            ]
+          },
+          {
+            "eq": [
+              {
+                "var": "outcome"
+              },
+              "viewed"
+            ]
+          }
+        ]
+      }
+    },
+    "deleteCustomer_deniedDecline": {
+      "name": "閲覧権限では確認を断っても削除されない",
+      "goal": "削除確認の入力にかかわらず閲覧権限での削除操作を防ぐ",
+      "expectedOutcome": "否定の確認入力を渡しても削除イベントを受理せず、顧客閲覧画面と対象顧客の情報を保持する",
+      "start": {
+        "state": "search",
+        "values": {
+          "role": "reader"
+        }
+      },
+      "steps": [
+        {
+          "transition": "searchFound"
+        },
+        {
+          "transition": "openCustomer",
+          "input": {
+            "exists": true
+          }
+        },
+        {
+          "transition": "openView"
+        },
+        {
+          "transition": "confirmDelete",
+          "input": {
+            "confirmed": false
+          },
+          "reject": true
+        }
+      ],
+      "expect": {
+        "and": [
+          {
+            "eq": [
+              {
+                "var": "$state"
+              },
+              "view"
+            ]
+          },
+          {
+            "eq": [
+              {
+                "var": "exists"
+              },
+              true
+            ]
+          },
+          {
+            "eq": [
+              {
+                "var": "revision"
+              },
+              "original"
+            ]
+          },
+          {
+            "eq": [
+              {
+                "var": "outcome"
+              },
+              "viewed"
+            ]
+          }
+        ]
+      }
     }
   },
   "decisions": {
-    "savePermissions": {
-      "state": "editing",
-      "event": "save",
+    "searchEntry": {
+      "state": "search",
+      "event": "search",
+      "cases": [
+        {
+          "values": {
+            "exists": true
+          },
+          "enabled": [
+            "searchFound"
+          ]
+        },
+        {
+          "values": {
+            "exists": false
+          },
+          "enabled": [
+            "searchEmpty"
+          ]
+        }
+      ]
+    },
+    "openCustomer": {
+      "state": "search",
+      "event": "open",
+      "cases": [
+        {
+          "values": {
+            "searched": true,
+            "exists": true
+          },
+          "input": {
+            "exists": true
+          },
+          "enabled": [
+            "openCustomer"
+          ]
+        },
+        {
+          "values": {
+            "searched": true,
+            "exists": true
+          },
+          "input": {
+            "exists": false
+          },
+          "enabled": [
+            "openCustomer"
+          ]
+        }
+      ]
+    },
+    "customerAvailability": {
+      "state": "customerAvailability",
+      "cases": [
+        {
+          "values": {
+            "exists": true
+          },
+          "enabled": [
+            "openView"
+          ]
+        },
+        {
+          "values": {
+            "exists": false
+          },
+          "enabled": [
+            "openGone"
+          ]
+        }
+      ]
+    },
+    "updatePermissions": {
+      "state": "edit",
+      "event": "update",
       "cases": [
         {
           "values": {
@@ -253,9 +699,7 @@
           "input": {
             "valid": true
           },
-          "enabled": [
-            "saveInvalid"
-          ]
+          "enabled": []
         },
         {
           "values": {
@@ -265,9 +709,7 @@
           "input": {
             "valid": false
           },
-          "enabled": [
-            "saveInvalid"
-          ]
+          "enabled": []
         },
         {
           "values": {
@@ -278,7 +720,7 @@
             "valid": true
           },
           "enabled": [
-            "saveValid"
+            "updateCustomer"
           ]
         },
         {
@@ -289,9 +731,7 @@
           "input": {
             "valid": false
           },
-          "enabled": [
-            "saveInvalid"
-          ]
+          "enabled": []
         },
         {
           "values": {
@@ -301,9 +741,7 @@
           "input": {
             "valid": true
           },
-          "enabled": [
-            "saveInvalid"
-          ]
+          "enabled": []
         },
         {
           "values": {
@@ -313,9 +751,7 @@
           "input": {
             "valid": false
           },
-          "enabled": [
-            "saveInvalid"
-          ]
+          "enabled": []
         },
         {
           "values": {
@@ -325,9 +761,7 @@
           "input": {
             "valid": true
           },
-          "enabled": [
-            "saveInvalid"
-          ]
+          "enabled": []
         },
         {
           "values": {
@@ -337,9 +771,133 @@
           "input": {
             "valid": false
           },
+          "enabled": []
+        }
+      ]
+    },
+    "deleteConfirmation": {
+      "state": "view",
+      "event": "requestDelete",
+      "cases": [
+        {
+          "values": {
+            "role": "editor",
+            "exists": true
+          },
+          "input": {
+            "confirmed": true
+          },
           "enabled": [
-            "saveInvalid"
+            "confirmDelete"
           ]
+        },
+        {
+          "values": {
+            "role": "editor",
+            "exists": true
+          },
+          "input": {
+            "confirmed": false
+          },
+          "enabled": [
+            "cancelDelete"
+          ]
+        },
+        {
+          "values": {
+            "role": "editor",
+            "exists": false
+          },
+          "input": {
+            "confirmed": true
+          },
+          "enabled": []
+        },
+        {
+          "values": {
+            "role": "editor",
+            "exists": false
+          },
+          "input": {
+            "confirmed": false
+          },
+          "enabled": []
+        },
+        {
+          "values": {
+            "role": "reader",
+            "exists": true
+          },
+          "input": {
+            "confirmed": true
+          },
+          "enabled": []
+        },
+        {
+          "values": {
+            "role": "reader",
+            "exists": true
+          },
+          "input": {
+            "confirmed": false
+          },
+          "enabled": []
+        },
+        {
+          "values": {
+            "role": "reader",
+            "exists": false
+          },
+          "input": {
+            "confirmed": true
+          },
+          "enabled": []
+        },
+        {
+          "values": {
+            "role": "reader",
+            "exists": false
+          },
+          "input": {
+            "confirmed": false
+          },
+          "enabled": []
+        }
+      ]
+    },
+    "editAvailability": {
+      "state": "view",
+      "event": "edit",
+      "cases": [
+        {
+          "values": {
+            "role": "editor",
+            "exists": true
+          },
+          "enabled": [
+            "openEdit"
+          ]
+        },
+        {
+          "values": {
+            "role": "editor",
+            "exists": false
+          },
+          "enabled": []
+        },
+        {
+          "values": {
+            "role": "reader",
+            "exists": true
+          },
+          "enabled": []
+        },
+        {
+          "values": {
+            "role": "reader",
+            "exists": false
+          },
+          "enabled": []
         }
       ]
     }

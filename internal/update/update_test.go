@@ -50,7 +50,7 @@ func TestVersions(t *testing.T) {
 	}
 }
 func TestRepositoryValidation(t *testing.T) {
-	for _, x := range []string{"nuitsjp/usecase-spec", "org/repo.x"} {
+	for _, x := range []string{"nuitsjp/ucspec", "org/repo.x"} {
 		if e := ValidateRepository(x); e != nil {
 			t.Fatal(e)
 		}

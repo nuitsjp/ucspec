@@ -22,7 +22,7 @@ jobs:
       - name: Test product onboarding with actual executable
         shell: pwsh
         run: |
-          $product = Join-Path $env:RUNNER_TEMP 'UCSPEC product with spaces'
+          $product = Join-Path $env:RUNNER_TEMP 'ucspec product with spaces'
           ./dist/ucspec.exe init --dir $product --name 'CI Product' --repo '${{ github.repository }}'
           if ($LASTEXITCODE -ne 0) { throw 'init failed' }
           & (Join-Path $product 'scripts/ucspec.ps1') build
@@ -46,5 +46,5 @@ jobs:
           path: |
             go.sum
             dist/BUILD-INFO.txt
-            examples/customer-crud/artifacts/usecase-spec/
+            examples/customer-crud/artifacts/ucspec/
             validation/browser/results.json

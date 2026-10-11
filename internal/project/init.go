@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/nuitsjp/usecase-spec/internal/model"
-	"github.com/nuitsjp/usecase-spec/internal/update"
+	"github.com/nuitsjp/ucspec/internal/model"
+	"github.com/nuitsjp/ucspec/internal/update"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -75,7 +75,12 @@ func Init(assets fs.FS, o Options) (items []Item, err error) {
 	files[".ucspec-version"] = []byte(v + "\n")
 	files[".tools/.gitignore"] = []byte("*\n!.gitignore\n")
 	files["artifacts/.gitignore"] = []byte("*\n!.gitignore\n")
-	for source, target := range map[string]string{"authoring.md": "spec/AUTHORING.md", "manual.md": "spec/USER-GUIDE.md", "schemas/spec.schema.json": "spec/ucspec.schema.json"} {
+	for source, target := range map[string]string{
+		"authoring.md":              "spec/AUTHORING.md",
+		"manual.md":                 "spec/USER-GUIDE.md",
+		"schemas/spec.schema.json":  "spec/ucspec.schema.json",
+		"ucspec-authoring-skill.md": ".agents/skills/ucspec-authoring/SKILL.md",
+	} {
 		b, er := fs.ReadFile(assets, source)
 		if er != nil {
 			return nil, er
@@ -189,16 +194,19 @@ const agentGuide = `# このプロダクトの仕様編集
 
 正本は project.json とそこから参照する構造化データです。
 
-- ユースケースの目的から作業を始め、共通モデルを参照する。画面や遷移を複製しない。
-- 変更・削除は閲覧を経由する。シナリオ列では遷移IDを使用する。
-- ガード、有限データ更新、独立した期待結果を明示する。
-- 検査を通すためだけに rules、scope、coverage、limits を緩めない。
-- 候補パスは自動承認しない。意味と期待結果を人が確認してからシナリオ化する。
-- check と build を実行し、反例、未網羅項目、変更影響を報告する。
-- ツールのバージョン更新は明示操作。最新への自動追随をしない。
-- このガイドへのプロダクト固有の追記は人と確認する。
+仕様の作成・変更や未網羅のレビューには、プロジェクトルートの
+[ucspec-authoring スキル](../.agents/skills/ucspec-authoring/SKILL.md) を使用します。
+ユーザーの目的と期待結果からシナリオを記述し、未網羅の業務上の意味と設計要求を残します。
+既知の要求に基づく編集を進め、判断に必要な情報が不足する場合に質問します。
 
-記法は AUTHORING.md、操作方法は USER-GUIDE.md を参照。
+- 共通モデルの状態・遷移・条件を参照し、ユースケースごとに複製しない。
+- シナリオの goal と expectedOutcome を記述し、モデルで評価する期待は expect に示す。
+- 検査を通すために性質、scope、coverage、入力ドメインや limits を緩めない。
+- レビューの記録で生の網羅率は変わらない。古いレビューの根拠は再評価する。
+- check と build を実行し、反例、未網羅、設計要求と未検証事項を報告する。
+- ツールの更新は明示操作とし、分析中にネットワーク取得や更新を行わない。
+
+記法は AUTHORING.md、操作方法は USER-GUIDE.md を参照してください。
 `
 const invokeScript = `# Windows PowerShell 5.1 / PowerShell 7
 $ErrorActionPreference = 'Stop'

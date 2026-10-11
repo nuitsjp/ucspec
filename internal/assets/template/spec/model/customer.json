@@ -1,6 +1,22 @@
 {
   "schemaVersion": "1",
   "variables": {
+    "searched": {
+      "domain": [
+        false,
+        true
+      ],
+      "initial": false,
+      "description": "検索を実行済みか。結果件数によって検索の制御状態を分けない。"
+    },
+    "searchAlert": {
+      "domain": [
+        false,
+        true
+      ],
+      "initial": false,
+      "description": "検索結果が0件であることをアラート表示したか。"
+    },
     "role": {
       "domain": [
         "reader",
@@ -28,7 +44,7 @@
       "domain": [
         "none",
         "viewed",
-        "saved",
+        "updated",
         "deleted",
         "cancelled",
         "denied",
@@ -39,71 +55,52 @@
   },
   "screens": {
     "search": {
-      "label": "顧客検索"
+      "label": "顧客検索",
+      "description": "検索条件を常に表示し、検索後は同じ画面の下部に検索結果を表示する。"
     },
     "view": {
       "label": "顧客閲覧"
     },
     "edit": {
-      "label": "顧客変更"
-    },
-    "delete": {
-      "label": "顧客削除"
+      "label": "顧客編集"
+    }
+  },
+  "choices": {
+    "customerAvailability": {
+      "label": "顧客の有無"
     }
   },
   "states": {
     "search": {
-      "label": "検索条件入力",
+      "label": "顧客検索",
       "screen": "search",
+      "layoutLayer": 0,
       "events": [
-        "search"
-      ]
-    },
-    "results": {
-      "label": "検索結果",
-      "screen": "search",
-      "events": [
+        "search",
         "open",
-        "search"
+        "chooseSettings"
       ]
     },
     "view": {
       "label": "顧客閲覧",
       "screen": "view",
+      "layoutLayer": 1,
       "events": [
         "edit",
         "requestDelete",
-        "back"
+        "back",
+        "chooseSettings"
       ]
     },
-    "editing": {
-      "label": "顧客変更",
+    "edit": {
+      "label": "顧客編集",
       "screen": "edit",
+      "layoutLayer": 2,
       "events": [
-        "save",
-        "cancelEdit"
-      ]
-    },
-    "saving": {
-      "label": "保存中",
-      "screen": "edit",
-      "events": [
-        "saveResult"
-      ]
-    },
-    "confirming": {
-      "label": "削除確認",
-      "screen": "delete",
-      "events": [
-        "confirmDelete",
-        "cancelDelete"
-      ]
-    },
-    "deleting": {
-      "label": "削除中",
-      "screen": "delete",
-      "events": [
-        "deleteResult"
+        "update",
+        "cancelEdit",
+        "chooseCustomers",
+        "chooseSettings"
       ]
     }
   },
@@ -114,68 +111,81 @@
       "parameters": {}
     },
     "open": {
-      "label": "顧客を閲覧",
+      "label": "閲覧",
       "source": "user",
-      "parameters": {}
+      "parameters": {
+        "exists": [
+          true,
+          false
+        ]
+      },
+      "when": {
+        "and": [
+          {
+            "var": "searched"
+          },
+          {
+            "var": "exists"
+          }
+        ]
+      }
     },
     "back": {
-      "label": "検索結果に戻る",
+      "label": "検索へ戻る",
       "source": "user",
       "parameters": {}
     },
     "edit": {
-      "label": "変更",
+      "label": "編集",
       "source": "user",
-      "parameters": {}
+      "parameters": {},
+      "when": {
+        "and": [
+          {
+            "condition": "exists"
+          },
+          {
+            "condition": "canEdit"
+          }
+        ]
+      }
     },
     "requestDelete": {
       "label": "削除",
       "source": "user",
-      "parameters": {}
+      "parameters": {
+        "confirmed": [
+          true,
+          false
+        ]
+      },
+      "when": {
+        "and": [
+          {
+            "condition": "exists"
+          },
+          {
+            "condition": "canEdit"
+          }
+        ]
+      }
     },
     "cancelEdit": {
-      "label": "変更中止",
+      "label": "編集取消",
       "source": "user",
       "parameters": {}
     },
-    "cancelDelete": {
-      "label": "削除中止",
-      "source": "user",
-      "parameters": {}
-    },
-    "confirmDelete": {
-      "label": "削除確定",
-      "source": "user",
-      "parameters": {}
-    },
-    "save": {
-      "label": "保存",
+    "update": {
+      "label": "更新",
       "source": "user",
       "parameters": {
         "valid": [
           true,
           false
         ]
-      }
-    },
-    "saveResult": {
-      "label": "保存応答",
-      "source": "system",
-      "parameters": {
-        "success": [
-          true,
-          false
-        ]
-      }
-    },
-    "deleteResult": {
-      "label": "削除応答",
-      "source": "system",
-      "parameters": {
-        "success": [
-          true,
-          false
-        ]
+      },
+      "when": {
+        "param": "valid"
       }
     }
   },
@@ -196,18 +206,10 @@
         "editor"
       ]
     },
-    "inputValid": {
+    "deleteConfirmed": {
       "eq": [
         {
-          "param": "valid"
-        },
-        true
-      ]
-    },
-    "operationSucceeded": {
-      "eq": [
-        {
-          "param": "success"
+          "param": "confirmed"
         },
         true
       ]
@@ -215,102 +217,102 @@
   },
   "transitions": {
     "searchFound": {
+      "defaultVisible": true,
       "from": "search",
-      "to": "results",
+      "to": "search",
+      "kind": "internal",
       "event": "search",
-      "action": "存在する顧客を検索結果に表示する",
+      "action": "一覧を表示",
       "guard": {
         "condition": "exists"
       },
+      "guardLabel": "1件以上",
       "set": {
-        "outcome": "none"
+        "outcome": "none",
+        "searched": true,
+        "searchAlert": false
       }
     },
     "searchEmpty": {
+      "defaultVisible": true,
       "from": "search",
       "to": "search",
+      "kind": "internal",
       "event": "search",
-      "action": "該当なしと表示する",
+      "action": "アラートを表示",
       "guard": {
         "not": {
           "condition": "exists"
         }
       },
+      "guardLabel": "0件",
       "set": {
-        "outcome": "empty"
-      },
-      "unownedReason": "検索ゼロ件の補助動作。3ユースケースは既存顧客を開始前提とする。"
+        "outcome": "empty",
+        "searched": true,
+        "searchAlert": true
+      }
     },
-    "searchAgain": {
-      "from": "results",
-      "to": "results",
-      "event": "search",
-      "action": "検索結果を再表示する",
-      "guard": {
-        "condition": "exists"
-      },
+    "openCustomer": {
+      "defaultVisible": true,
+      "from": "search",
+      "to": "customerAvailability",
+      "event": "open",
+      "action": "",
       "set": {
-        "outcome": "none"
-      },
-      "unownedReason": "全体ナビゲーション"
-    },
-    "searchGone": {
-      "from": "results",
-      "to": "search",
-      "event": "search",
-      "action": "対象なしと表示する",
-      "guard": {
-        "not": {
-          "condition": "exists"
-        }
-      },
-      "set": {
-        "outcome": "empty"
-      },
-      "unownedReason": "検索結果消失時の明示的な扱い"
+        "exists": {
+          "param": "exists"
+        },
+        "outcome": "none",
+        "searchAlert": false
+      }
     },
     "openView": {
-      "from": "results",
+      "defaultVisible": true,
+      "from": "customerAvailability",
       "to": "view",
-      "event": "open",
-      "action": "対象顧客を閲覧表示する",
+      "action": "顧客を表示",
       "guard": {
         "condition": "exists"
       },
+      "guardLabel": "顧客あり",
       "set": {
         "outcome": "viewed"
       }
     },
     "openGone": {
-      "from": "results",
+      "defaultVisible": true,
+      "from": "customerAvailability",
       "to": "search",
-      "event": "open",
-      "action": "対象なしと表示する",
+      "action": "再検索してアラートを表示",
       "guard": {
         "not": {
           "condition": "exists"
         }
       },
+      "guardLabel": "顧客なし",
       "set": {
-        "outcome": "empty"
-      },
-      "unownedReason": "選択時消失の明示的な扱い"
+        "outcome": "empty",
+        "searched": true,
+        "searchAlert": true
+      }
     },
     "backResults": {
+      "defaultVisible": true,
       "from": "view",
-      "to": "results",
+      "to": "search",
       "event": "back",
-      "action": "検索結果を再表示する",
+      "action": "条件と結果を再表示",
       "set": {
         "outcome": "none"
       },
       "unownedReason": "全体ナビゲーション。横断回帰シナリオで確認する。"
     },
     "openEdit": {
+      "defaultVisible": true,
       "from": "view",
-      "to": "editing",
+      "to": "edit",
       "event": "edit",
-      "action": "変更用入力欄を表示する",
+      "action": "編集欄を表示",
       "guard": {
         "and": [
           {
@@ -321,36 +323,17 @@
           }
         ]
       },
+      "guardLabel": "顧客あり・編集可",
       "set": {
         "outcome": "none"
       }
     },
-    "denyEdit": {
-      "from": "view",
+    "updateCustomer": {
+      "defaultVisible": true,
+      "from": "edit",
       "to": "view",
-      "event": "edit",
-      "action": "変更不可を表示する",
-      "guard": {
-        "not": {
-          "and": [
-            {
-              "condition": "exists"
-            },
-            {
-              "condition": "canEdit"
-            }
-          ]
-        }
-      },
-      "set": {
-        "outcome": "denied"
-      }
-    },
-    "openDelete": {
-      "from": "view",
-      "to": "confirming",
-      "event": "requestDelete",
-      "action": "削除確認を表示する",
+      "event": "update",
+      "action": "顧客を更新",
       "guard": {
         "and": [
           {
@@ -361,177 +344,81 @@
           }
         ]
       },
-      "set": {
-        "outcome": "none"
-      }
-    },
-    "denyDelete": {
-      "from": "view",
-      "to": "view",
-      "event": "requestDelete",
-      "action": "削除不可を表示する",
-      "guard": {
-        "not": {
-          "and": [
-            {
-              "condition": "exists"
-            },
-            {
-              "condition": "canEdit"
-            }
-          ]
-        }
-      },
-      "set": {
-        "outcome": "denied"
-      }
-    },
-    "saveValid": {
-      "from": "editing",
-      "to": "saving",
-      "event": "save",
-      "action": "入力を検証し保存要求を開始する",
-      "guard": {
-        "and": [
-          {
-            "condition": "exists"
-          },
-          {
-            "condition": "canEdit"
-          },
-          {
-            "condition": "inputValid"
-          }
-        ]
-      }
-    },
-    "saveInvalid": {
-      "from": "editing",
-      "to": "editing",
-      "event": "save",
-      "action": "入力を保持してエラーを表示する",
-      "guard": {
-        "not": {
-          "and": [
-            {
-              "condition": "exists"
-            },
-            {
-              "condition": "canEdit"
-            },
-            {
-              "condition": "inputValid"
-            }
-          ]
-        }
-      }
-    },
-    "saveSucceeded": {
-      "from": "saving",
-      "to": "view",
-      "event": "saveResult",
-      "action": "更新内容を閲覧表示する",
-      "guard": {
-        "condition": "operationSucceeded"
-      },
+      "guardLabel": "顧客あり・編集可",
       "set": {
         "revision": "updated",
-        "outcome": "saved"
-      }
-    },
-    "saveFailed": {
-      "from": "saving",
-      "to": "editing",
-      "event": "saveResult",
-      "action": "入力を保持して保存エラーを表示する",
-      "guard": {
-        "not": {
-          "condition": "operationSucceeded"
-        }
+        "outcome": "updated"
       }
     },
     "cancelEdit": {
-      "from": "editing",
+      "defaultVisible": true,
+      "from": "edit",
       "to": "view",
       "event": "cancelEdit",
-      "action": "変更を破棄して閲覧に戻る",
+      "action": "編集を破棄",
       "set": {
         "outcome": "cancelled"
       }
     },
     "confirmDelete": {
-      "from": "confirming",
-      "to": "deleting",
-      "event": "confirmDelete",
-      "action": "削除要求を開始する",
+      "defaultVisible": true,
+      "from": "view",
+      "to": "search",
+      "event": "requestDelete",
+      "action": "削除",
       "guard": {
         "and": [
           {
-            "condition": "exists"
+            "and": [
+              {
+                "condition": "exists"
+              },
+              {
+                "condition": "canEdit"
+              }
+            ]
           },
           {
-            "condition": "canEdit"
+            "condition": "deleteConfirmed"
           }
         ]
-      }
-    },
-    "denyConfirm": {
-      "from": "confirming",
-      "to": "view",
-      "event": "confirmDelete",
-      "action": "削除不可を表示する",
-      "guard": {
-        "not": {
-          "and": [
-            {
-              "condition": "exists"
-            },
-            {
-              "condition": "canEdit"
-            }
-          ]
-        }
       },
+      "guardLabel": "はい",
       "set": {
-        "outcome": "denied"
-      },
-      "unownedReason": "削除確認時の防御的なガード。現モデルの到達状態では成立しない。"
-    },
-    "deleteSucceeded": {
-      "from": "deleting",
-      "to": "search",
-      "event": "deleteResult",
-      "action": "顧客を削除して検索画面へ戻る",
-      "guard": {
-        "condition": "operationSucceeded"
-      },
-      "set": {
+        "searched": false,
         "exists": false,
         "outcome": "deleted"
       }
     },
-    "deleteFailed": {
-      "from": "deleting",
-      "to": "view",
-      "event": "deleteResult",
-      "action": "削除失敗を表示して閲覧に戻る",
-      "guard": {
-        "not": {
-          "condition": "operationSucceeded"
-        }
-      },
-      "set": {
-        "outcome": "none"
-      }
-    },
     "cancelDelete": {
-      "from": "confirming",
+      "defaultVisible": true,
+      "from": "view",
       "to": "view",
-      "event": "cancelDelete",
-      "action": "削除せず閲覧に戻る",
+      "event": "requestDelete",
+      "action": "",
       "set": {
         "outcome": "cancelled"
-      }
+      },
+      "guard": {
+        "and": [
+          {
+            "and": [
+              {
+                "condition": "exists"
+              },
+              {
+                "condition": "canEdit"
+              }
+            ]
+          },
+          {
+            "not": {
+              "condition": "deleteConfirmed"
+            }
+          }
+        ]
+      },
+      "guardLabel": "いいえ"
     }
   }
 }

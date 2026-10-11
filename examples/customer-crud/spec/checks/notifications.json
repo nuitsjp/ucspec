@@ -1,0 +1,154 @@
+{
+  "schemaVersion": "1",
+  "properties": {
+    "notificationCommitted": {
+      "kind": "invariant",
+      "description": "通知更新後の設定は、編集した設定値と一致する。",
+      "assert": {
+        "or": [
+          {
+            "ne": [
+              {
+                "var": "notificationOutcome"
+              },
+              "updated"
+            ]
+          },
+          {
+            "eq": [
+              {
+                "var": "notificationEnabled"
+              },
+              {
+                "var": "notificationDraft"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "notificationEnablePossible": {
+      "kind": "reachable",
+      "description": "本人の顧客情報の更新通知を有効にして更新できる。",
+      "assert": {
+        "and": [
+          {
+            "eq": [
+              {
+                "var": "notificationEnabled"
+              },
+              true
+            ]
+          },
+          {
+            "eq": [
+              {
+                "var": "notificationOutcome"
+              },
+              "updated"
+            ]
+          }
+        ]
+      }
+    },
+    "notificationCancelRestoresEnabled": {
+      "kind": "invariant",
+      "description": "通知設定の編集を取り消した後は、入力が有効な設定値に戻る。",
+      "assert": {
+        "or": [
+          {
+            "ne": [
+              {
+                "var": "notificationOutcome"
+              },
+              "cancelled"
+            ]
+          },
+          {
+            "eq": [
+              {
+                "var": "notificationEnabled"
+              },
+              {
+                "var": "notificationDraft"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "regressions": {
+    "notificationThenCustomer": {
+      "name": "顧客情報の更新通知を更新してから顧客を閲覧する",
+      "goal": "通知設定を更新した後に顧客情報を確認する",
+      "expectedOutcome": "通知を有効にした設定を維持し、対象顧客を検索して閲覧できる",
+      "start": {
+        "state": "search"
+      },
+      "steps": [
+        {
+          "transition": "openSettingsFromSearch",
+          "input": {
+            "discard": true
+          }
+        },
+        {
+          "transition": "editNotification",
+          "input": {
+            "enabled": true
+          }
+        },
+        {
+          "transition": "updateNotification"
+        },
+        {
+          "transition": "returnSearchFromSettings",
+          "input": {
+            "discard": true
+          }
+        },
+        {
+          "transition": "searchFound"
+        },
+        {
+          "transition": "openCustomer",
+          "input": {
+            "exists": true
+          }
+        },
+        {
+          "transition": "openView"
+        }
+      ],
+      "expect": {
+        "and": [
+          {
+            "eq": [
+              {
+                "var": "$state"
+              },
+              "view"
+            ]
+          },
+          {
+            "eq": [
+              {
+                "var": "notificationEnabled"
+              },
+              true
+            ]
+          },
+          {
+            "eq": [
+              {
+                "var": "exists"
+              },
+              true
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

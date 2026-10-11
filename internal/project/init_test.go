@@ -1,15 +1,16 @@
 package project
 
 import (
-	"github.com/nuitsjp/usecase-spec/internal/assets"
-	"github.com/nuitsjp/usecase-spec/internal/compiler"
+	"bytes"
+	"github.com/nuitsjp/ucspec/internal/assets"
+	"github.com/nuitsjp/ucspec/internal/compiler"
 	"os"
 	"path/filepath"
 	"testing"
 )
 
 func options(root string) Options {
-	return Options{Root: root, Name: "Test product", Version: "0.1.0", Repository: "nuitsjp/usecase-spec"}
+	return Options{Root: root, Name: "Test product", Version: "0.1.0", Repository: "nuitsjp/ucspec"}
 }
 func TestInitAndIdempotence(t *testing.T) {
 	root := t.TempDir()
@@ -76,6 +77,65 @@ func TestInitCopiesBinaryAndPreservesRootGitignore(t *testing.T) {
 	b, _ = os.ReadFile(filepath.Join(root, ".gitignore"))
 	if string(b) != "original" {
 		t.Fatal("root gitignore modified")
+	}
+}
+func TestInitDistributesAuthoringSkill(t *testing.T) {
+	root := t.TempDir()
+	if _, err := Init(assets.Files, options(root)); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(filepath.Join(root, ".agents/skills/ucspec-authoring/SKILL.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := assets.Files.ReadFile("ucspec-authoring-skill.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, want) {
+		t.Fatal("installed authoring skill differs from embedded content")
+	}
+}
+func TestInitPreservesExistingAuthoringSkill(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, ".agents/skills/ucspec-authoring/SKILL.md")
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		t.Fatal(err)
+	}
+	want := []byte("Product-specific authoring instructions\n")
+	if err := os.WriteFile(path, want, 0644); err != nil {
+		t.Fatal(err)
+	}
+	o := options(root)
+	o.DryRun = true
+	items, err := Init(assets.Files, o)
+	if err != nil {
+		t.Fatal(err)
+	}
+	conflictFound := false
+	for _, item := range items {
+		if item.Path == ".agents/skills/ucspec-authoring/SKILL.md" && item.Action == "conflict" {
+			conflictFound = true
+		}
+	}
+	if !conflictFound {
+		t.Fatal("dry run did not report authoring skill conflict")
+	}
+	o.DryRun = false
+	if _, err := Init(assets.Files, o); err == nil {
+		t.Fatal("existing authoring skill was accepted")
+	}
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, want) {
+		t.Fatal("product authoring skill was replaced")
+	}
+	for _, rel := range []string{".ucspec-version", "spec/project.json"} {
+		if _, err := os.Stat(filepath.Join(root, rel)); !os.IsNotExist(err) {
+			t.Fatalf("initialization left a partial file: %s", rel)
+		}
 	}
 }
 func TestSafePath(t *testing.T) {

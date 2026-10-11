@@ -2,7 +2,7 @@
 
 ## 1. 役割を理解する
 
-UCSPECは「画面を描くツール」ではなく、構造化されたユースケース仕様を検査して文書化するツールです。
+ucspecは「画面を描くツール」ではなく、構造化されたユースケース仕様を検査して文書化するツールです。
 
 人: 目的、期待結果、禁止事項、未網羅ケースを追加する意味を判断します。
 AI: 合意した目的に沿って共有モデル・参照・シナリオを編集し、CLIを実行します。
@@ -18,7 +18,7 @@ CLI: 同じ入力から同じ検査結果を算出します。意味のあるシ
 .\dist\ucspec.exe build --project examples/customer-crud/spec/project.json
 ```
 
-`artifacts/usecase-spec/index.html` はサンプルプロダクトのディレクトリに作成されます。全体図、ユースケース、シナリオ、未網羅経路の順に見てください。プライムパスと遷移網羅の値が異なることを確認します。
+`artifacts/ucspec/index.html` はサンプルプロダクトのディレクトリに作成されます。全体図、ユースケース、シナリオ、未網羅経路の順に見てください。プライムパスと遷移網羅の値が異なることを確認します。
 
 ## 3. 自分のプロダクトを初期化する
 
@@ -45,7 +45,7 @@ AIに渡す作業例:
 
 ```powershell
 .\scripts\ucspec.ps1 build
-Copy-Item .\artifacts\usecase-spec\report.json .\baseline.json
+Copy-Item .\artifacts\ucspec\report.json .\baseline.json
 # 仕様を編集
 .\scripts\ucspec.ps1 build --baseline baseline.json
 ```

@@ -1,13 +1,13 @@
 {
   "schemaVersion": "1",
-  "name": "顧客管理サンプル",
-  "repository": "nuitsjp/usecase-spec",
+  "name": "顧客管理システム サンプル",
+  "repository": "nuitsjp/ucspec",
   "files": [
     "model/*.json",
     "usecases/*.json",
     "checks/*.json"
   ],
-  "output": "artifacts/usecase-spec",
+  "output": "artifacts/ucspec",
   "initial": [
     {
       "state": "search",

@@ -1,4 +1,4 @@
-module github.com/nuitsjp/usecase-spec
+module github.com/nuitsjp/ucspec
 
 go 1.23.0
 

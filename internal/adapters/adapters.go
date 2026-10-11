@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	elk "github.com/d2lang/elk-go"
-	"github.com/nuitsjp/usecase-spec/internal/compiler"
+	"github.com/nuitsjp/ucspec/internal/compiler"
 	"github.com/santhosh-tekuri/jsonschema/v6"
 	"go.yaml.in/yaml/v3"
 	"io"

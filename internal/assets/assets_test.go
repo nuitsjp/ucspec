@@ -9,7 +9,11 @@ import (
 )
 
 func TestEmbeddedDocumentationMatchesSource(t *testing.T) {
-	for _, pair := range [][2]string{{"authoring.md", "../../docs/authoring.md"}, {"manual.md", "../../docs/user-manual.md"}} {
+	for _, pair := range [][2]string{
+		{"authoring.md", "../../docs/authoring.md"},
+		{"manual.md", "../../docs/user-manual.md"},
+		{"ucspec-authoring-skill.md", "../../.agents/skills/ucspec-authoring/SKILL.md"},
+	} {
 		a, e := Files.ReadFile(pair[0])
 		if e != nil {
 			t.Fatal(e)

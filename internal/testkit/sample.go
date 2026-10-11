@@ -2,8 +2,8 @@
 package testkit
 
 import (
-	"github.com/nuitsjp/usecase-spec/internal/compiler"
-	"github.com/nuitsjp/usecase-spec/internal/model"
+	"github.com/nuitsjp/ucspec/internal/compiler"
+	"github.com/nuitsjp/ucspec/internal/model"
 	"path/filepath"
 	"runtime"
 	"testing"

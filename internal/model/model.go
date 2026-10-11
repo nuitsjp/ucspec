@@ -44,17 +44,20 @@ func (l *Limits) Defaults() {
 }
 
 type Document struct {
-	SchemaVersion string                   `json:"schemaVersion"`
-	Variables     map[string]Variable      `json:"variables,omitempty"`
-	Screens       map[string]Screen        `json:"screens,omitempty"`
-	States        map[string]State         `json:"states,omitempty"`
-	Events        map[string]Event         `json:"events,omitempty"`
-	Conditions    map[string]Expr          `json:"conditions,omitempty"`
-	Transitions   map[string]Transition    `json:"transitions,omitempty"`
-	UseCases      map[string]UseCase       `json:"usecases,omitempty"`
-	Properties    map[string]Property      `json:"properties,omitempty"`
-	Decisions     map[string]DecisionTable `json:"decisions,omitempty"`
-	Regressions   map[string]Scenario      `json:"regressions,omitempty"`
+	SchemaVersion   string                    `json:"schemaVersion"`
+	Variables       map[string]Variable       `json:"variables,omitempty"`
+	Screens         map[string]Screen         `json:"screens,omitempty"`
+	States          map[string]State          `json:"states,omitempty"`
+	Choices         map[string]Choice         `json:"choices,omitempty"`
+	Events          map[string]Event          `json:"events,omitempty"`
+	Conditions      map[string]Expr           `json:"conditions,omitempty"`
+	Transitions     map[string]Transition     `json:"transitions,omitempty"`
+	UseCasePackages map[string]UseCasePackage `json:"usecasePackages,omitempty"`
+	UseCases        map[string]UseCase        `json:"usecases,omitempty"`
+	CommonRules     map[string]CommonRule     `json:"commonRules,omitempty"`
+	Properties      map[string]Property       `json:"properties,omitempty"`
+	Decisions       map[string]DecisionTable  `json:"decisions,omitempty"`
+	Regressions     map[string]Scenario       `json:"regressions,omitempty"`
 }
 type Variable struct {
 	Domain      []any  `json:"domain"`
@@ -66,10 +69,13 @@ type Screen struct {
 	Description string `json:"description,omitempty"`
 }
 type State struct {
-	Label    string   `json:"label"`
-	Screen   string   `json:"screen"`
-	Events   []string `json:"events"`
-	Terminal bool     `json:"terminal,omitempty"`
+	Label       string   `json:"label"`
+	Screen      string   `json:"screen"`
+	Events      []string `json:"events"`
+	Parent      string   `json:"parent,omitempty"`
+	Initial     string   `json:"initial,omitempty"`
+	Terminal    bool     `json:"terminal,omitempty"`
+	LayoutLayer *int     `json:"layoutLayer,omitempty"`
 }
 type Event struct {
 	Label      string           `json:"label"`
@@ -77,14 +83,23 @@ type Event struct {
 	Parameters map[string][]any `json:"parameters,omitempty"`
 	When       Expr             `json:"when,omitempty"`
 }
+
+// Choice is a transient branch vertex, not an executable UI state.
+type Choice struct {
+	Label  string `json:"label"`
+	Parent string `json:"parent,omitempty"`
+}
 type Transition struct {
-	From          string          `json:"from"`
-	To            string          `json:"to"`
-	Event         string          `json:"event"`
-	Guard         Expr            `json:"guard,omitempty"`
-	Action        string          `json:"action"`
-	Set           map[string]Expr `json:"set,omitempty"`
-	UnownedReason string          `json:"unownedReason,omitempty"`
+	From           string          `json:"from"`
+	To             string          `json:"to"`
+	Kind           string          `json:"kind,omitempty"`
+	Event          string          `json:"event,omitempty"`
+	Guard          Expr            `json:"guard,omitempty"`
+	GuardLabel     string          `json:"guardLabel,omitempty"`
+	DefaultVisible bool            `json:"defaultVisible,omitempty"`
+	Action         string          `json:"action"`
+	Set            map[string]Expr `json:"set,omitempty"`
+	UnownedReason  string          `json:"unownedReason,omitempty"`
 }
 type Snapshot struct {
 	State  string         `json:"state"`
@@ -98,20 +113,43 @@ type Step struct {
 	Note       string         `json:"note,omitempty"`
 }
 type Scenario struct {
-	Name        string   `json:"name"`
-	Start       Snapshot `json:"start"`
-	Steps       []Step   `json:"steps"`
-	Expect      Expr     `json:"expect"`
-	Description string   `json:"description,omitempty"`
+	Name            string   `json:"name"`
+	Goal            string   `json:"goal"`
+	ExpectedOutcome string   `json:"expectedOutcome"`
+	Start           Snapshot `json:"start"`
+	Steps           []Step   `json:"steps"`
+	Expect          Expr     `json:"expect"`
+	Description     string   `json:"description,omitempty"`
+}
+type UseCasePackage struct {
+	Name   string `json:"name"`
+	Parent string `json:"parent,omitempty"`
 }
 type UseCase struct {
-	Name      string              `json:"name"`
-	Goal      string              `json:"goal"`
-	Actor     string              `json:"actor"`
-	Starts    []Snapshot          `json:"starts"`
-	End       Expr                `json:"end"`
-	Scope     []string            `json:"scope"`
-	Scenarios map[string]Scenario `json:"scenarios"`
+	Name            string                    `json:"name"`
+	Goal            string                    `json:"goal"`
+	Actor           string                    `json:"actor"`
+	Package         string                    `json:"package,omitempty"`
+	Starts          []Snapshot                `json:"starts"`
+	End             Expr                      `json:"end"`
+	Scope           []string                  `json:"scope"`
+	Scenarios       map[string]Scenario       `json:"scenarios"`
+	CoverageReviews map[string]CoverageReview `json:"coverageReviews,omitempty"`
+}
+type CoverageReview struct {
+	Kind                     string   `json:"kind"`
+	Requirements             []string `json:"requirements"`
+	Status                   string   `json:"status"`
+	Reason                   string   `json:"reason"`
+	Scenario                 string   `json:"scenario,omitempty"`
+	ArchitectureRequirements []string `json:"architectureRequirements,omitempty"`
+	BasisHash                string   `json:"basisHash"`
+}
+
+// CommonRule describes product-wide behavior outside the finite execution graph.
+type CommonRule struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
 }
 type Property struct {
 	Kind        string `json:"kind"`
@@ -120,7 +158,7 @@ type Property struct {
 }
 type DecisionTable struct {
 	State string         `json:"state"`
-	Event string         `json:"event"`
+	Event string         `json:"event,omitempty"`
 	Cases []DecisionCase `json:"cases"`
 }
 type DecisionCase struct {
@@ -141,7 +179,7 @@ type Spec struct {
 }
 
 func EmptyDocument() Document {
-	return Document{SchemaVersion: "1", Variables: map[string]Variable{}, Screens: map[string]Screen{}, States: map[string]State{}, Events: map[string]Event{}, Conditions: map[string]Expr{}, Transitions: map[string]Transition{}, UseCases: map[string]UseCase{}, Properties: map[string]Property{}, Decisions: map[string]DecisionTable{}, Regressions: map[string]Scenario{}}
+	return Document{SchemaVersion: "1", Variables: map[string]Variable{}, Screens: map[string]Screen{}, States: map[string]State{}, Choices: map[string]Choice{}, Events: map[string]Event{}, Conditions: map[string]Expr{}, Transitions: map[string]Transition{}, UseCasePackages: map[string]UseCasePackage{}, UseCases: map[string]UseCase{}, CommonRules: map[string]CommonRule{}, Properties: map[string]Property{}, Decisions: map[string]DecisionTable{}, Regressions: map[string]Scenario{}}
 }
 func Keys[V any](m map[string]V) []string {
 	k := make([]string, 0, len(m))
@@ -179,10 +217,11 @@ func CloneSnapshot(s Snapshot) Snapshot {
 	return Snapshot{State: s.State, Values: CopyValues(s.Values)}
 }
 func (s *Spec) Normalize(v Snapshot) (Snapshot, error) {
-	if _, ok := s.States[v.State]; !ok {
-		return v, fmt.Errorf("unknown state %q", v.State)
+	leaf, err := s.Enter(v.State)
+	if err != nil {
+		return v, err
 	}
-	r := Snapshot{State: v.State, Values: map[string]any{}}
+	r := Snapshot{State: leaf, Values: map[string]any{}}
 	for k, d := range s.Variables {
 		r.Values[k] = d.Initial
 	}
@@ -198,6 +237,82 @@ func (s *Spec) Normalize(v Snapshot) (Snapshot, error) {
 		r.Values[k] = x
 	}
 	return r, nil
+}
+
+// Enter resolves deterministic default entry through nested composite states.
+// Snapshots store one active leaf; its ancestors are implied by the hierarchy.
+func (s *Spec) Enter(id string) (string, error) {
+	seen := map[string]bool{}
+	for {
+		if s.IsChoice(id) {
+			return id, nil
+		}
+		st, ok := s.States[id]
+		if !ok {
+			return "", fmt.Errorf("unknown state %q", id)
+		}
+		if seen[id] {
+			return "", fmt.Errorf("cyclic initial state %q", id)
+		}
+		seen[id] = true
+		if st.Initial == "" {
+			return id, nil
+		}
+		id = st.Initial
+	}
+}
+
+// StatePath returns the active state followed by its containing states.
+// The bound also allows compiler diagnostics to inspect malformed input safely.
+func (s *Spec) StatePath(id string) []string {
+	path := []string{}
+	for id != "" && len(path) <= len(s.States)+len(s.Choices) {
+		path = append(path, id)
+		if choice, ok := s.Choices[id]; ok {
+			id = choice.Parent
+		} else {
+			id = s.States[id].Parent
+		}
+	}
+	return path
+}
+
+func (s *Spec) IsChoice(id string) bool {
+	_, ok := s.Choices[id]
+	return ok
+}
+
+func (s *Spec) HasVertex(id string) bool {
+	_, ok := s.States[id]
+	return ok || s.IsChoice(id)
+}
+
+func (s *Spec) InState(active, id string) bool {
+	return Contains(s.StatePath(active), id)
+}
+
+func (s *Spec) Children(id string) []string {
+	ids := []string{}
+	for _, child := range Keys(s.States) {
+		if s.States[child].Parent == id {
+			ids = append(ids, child)
+		}
+	}
+	return ids
+}
+
+// Leaves gives the possible control states for a transition declared on id.
+func (s *Spec) Leaves(id string) []string {
+	if s.IsChoice(id) {
+		return []string{id}
+	}
+	ids := []string{}
+	for _, leaf := range Keys(s.States) {
+		if s.States[leaf].Initial == "" && s.InState(leaf, id) {
+			ids = append(ids, leaf)
+		}
+	}
+	return ids
 }
 func InDomain(domain []any, value any) bool {
 	for _, x := range domain {
@@ -230,6 +345,7 @@ type Check struct {
 }
 type Requirement struct {
 	ID      string   `json:"id"`
+	State   string   `json:"state,omitempty"`
 	Path    []string `json:"path,omitempty"`
 	Witness *Witness `json:"witness,omitempty"`
 }
@@ -247,6 +363,8 @@ type ScenarioResult struct {
 	Expect            Expr          `json:"expect"`
 	ID                string        `json:"id"`
 	Name              string        `json:"name"`
+	Goal              string        `json:"goal"`
+	ExpectedOutcome   string        `json:"expectedOutcome"`
 	UseCase           string        `json:"usecase,omitempty"`
 	Valid             bool          `json:"valid"`
 	Error             string        `json:"error,omitempty"`
@@ -260,10 +378,18 @@ type Observation struct {
 	Guard      bool            `json:"guard"`
 }
 type UseCaseResult struct {
-	ID              string     `json:"id"`
-	Coverage        []Coverage `json:"coverage"`
-	ReachableStates int        `json:"reachableStates"`
-	Complete        bool       `json:"complete"`
+	ID              string                 `json:"id"`
+	Coverage        []Coverage             `json:"coverage"`
+	ReachableStates int                    `json:"reachableStates"`
+	Complete        bool                   `json:"complete"`
+	ReviewBasisHash string                 `json:"reviewBasisHash"`
+	CoverageReviews []CoverageReviewResult `json:"coverageReviews"`
+}
+type CoverageReviewResult struct {
+	ID     string         `json:"id"`
+	Review CoverageReview `json:"review"`
+	Status string         `json:"status"`
+	Error  string         `json:"error,omitempty"`
 }
 type Impact struct {
 	Changed              []string           `json:"changed"`
@@ -290,4 +416,4 @@ type Report struct {
 	Impact          *Impact             `json:"impact,omitempty"`
 }
 
-var CoverageKinds = []string{"transitions", "pairs", "primePaths", "boundedPaths", "conditions", "multipleConditions"}
+var CoverageKinds = []string{"states", "compositeStates", "transitions", "pairs", "primePaths", "boundedPaths", "conditions", "multipleConditions"}

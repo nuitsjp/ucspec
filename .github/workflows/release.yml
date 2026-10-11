@@ -32,5 +32,5 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $version = $env:GITHUB_REF_NAME -replace '^v',''
-          gh release create $env:GITHUB_REF_NAME "dist/ucspec_${version}_windows_amd64.zip" dist/checksums.txt --verify-tag --title "UCSPEC $version" --generate-notes
+          gh release create $env:GITHUB_REF_NAME "dist/ucspec_${version}_windows_amd64.zip" dist/checksums.txt --verify-tag --title "ucspec $version" --generate-notes
           if ($LASTEXITCODE -ne 0) { throw 'Release creation failed' }

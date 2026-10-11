@@ -1,4 +1,4 @@
-# UCSPEC development
+# ucspec development
 
 Read README.md, docs/architecture.md, docs/authoring.md and docs/verification.md before modifying semantics.
 Keep the finite execution engine independent of layout, file formats and CLI orchestration.

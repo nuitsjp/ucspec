@@ -1,34 +1,127 @@
 <!doctype html>
-<html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>UCSPEC サンプル / 顧客管理</title>
+<html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ucspec サンプル / 顧客管理システム</title>
 <style>
-:root{font-family:"Segoe UI","Yu Gothic",sans-serif;color:#173147;background:#eef3f6}*{box-sizing:border-box}body{margin:0}header{padding:36px max(24px,calc((100vw - 1040px)/2));background:#102e40;color:#fff}h1{margin:8px 0;font-size:30px}.eyebrow{letter-spacing:.14em;font-size:12px;color:#7bdac3}main{max-width:1040px;margin:28px auto;padding:0 24px}.bar,.card{background:white;border:1px solid #dce6ec;border-radius:12px;padding:24px;margin-bottom:20px}.bar{display:flex;gap:18px;align-items:center;flex-wrap:wrap}.card h2{margin-top:0}button,select,input{font:inherit;border:1px solid #beced8;border-radius:6px;padding:9px 14px}button{cursor:pointer;background:#fff}button.primary{background:#066b67;color:#fff;border-color:#066b67}button.danger{background:#af3535;color:white;border-color:#af3535}button:disabled{cursor:not-allowed;opacity:.45}label{display:inline-flex;gap:8px;align-items:center}input[type=text]{width:min(400px,100%)}.actions{display:flex;gap:12px;margin-top:24px;flex-wrap:wrap}.muted{font-size:13px;color:#566f7f;line-height:1.7}.message{background:#fff5db;border-left:4px solid #d89420;padding:14px;margin-top:20px}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:14px;border-bottom:1px solid #e3eaf0}.state{font-size:12px;font-family:Consolas,monospace;color:#607c8e}.notice{line-height:1.8;color:#536e7d}.screen-title{display:flex;justify-content:space-between;align-items:center}footer{font-size:12px;text-align:center;color:#697e8a;margin:32px}strong{font-weight:650}
+:root{font-family:"Segoe UI","Yu Gothic",sans-serif;color:#173147;background:#eef3f6}*{box-sizing:border-box}body{margin:0}header{padding:36px max(24px,calc((100vw - 1120px)/2));background:#102e40;color:#fff}h1{margin:8px 0;font-size:30px}.eyebrow{letter-spacing:.14em;font-size:12px;color:#7bdac3}main{max-width:1120px;margin:28px auto;padding:0 24px}.layout{display:grid;grid-template-columns:220px minmax(0,1fr);gap:20px;align-items:start}.sidebar,.card{background:white;border:1px solid #dce6ec;border-radius:12px;padding:24px}.sidebar{position:sticky;top:20px}.menu-title{font-size:13px;font-weight:650;color:#566f7f;margin-bottom:12px}.menu-actions{display:grid;gap:10px}.menu-actions button{text-align:left}.menu-actions button[aria-current=true]{background:#e2f3ef;border-color:#73b9ad;color:#07524f}.card{min-height:360px}.card h2{margin-top:0}button,select,input{font:inherit;border:1px solid #beced8;border-radius:6px;padding:9px 14px}button{cursor:pointer;background:#fff}button.primary{background:#066b67;color:#fff;border-color:#066b67}button.danger{background:#af3535;color:white;border-color:#af3535}button:disabled{cursor:not-allowed;opacity:.45}label{display:inline-flex;gap:8px;align-items:center}input[type=text]{width:min(400px,100%);min-width:0}.search-form{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.search-form label{flex:0 1 450px;max-width:100%}.search-form input{width:400px;flex:1}.search-form label span{white-space:nowrap}input[type=checkbox]{width:1.1em;height:1.1em;padding:0}.actions{display:flex;gap:12px;margin-top:24px;flex-wrap:wrap}.muted{font-size:13px;color:#566f7f;line-height:1.7}.message{background:#fff5db;border-left:4px solid #d89420;padding:14px;margin-top:20px}.busy{color:#07524f;font-weight:650}table{width:100%;border-collapse:collapse;margin-top:24px}th,td{text-align:left;padding:14px;border-bottom:1px solid #e3eaf0}.state{font-size:12px;font-family:Consolas,monospace;color:#607c8e}.notice{line-height:1.8;color:#536e7d}.screen-title{display:flex;justify-content:space-between;align-items:center}.sample-controls{margin-top:28px;border-top:1px solid #e3eaf0;padding-top:18px}.sample-controls summary{cursor:pointer;font-weight:650}.sample-controls label{margin-top:12px}.sample-controls select{width:100%}.sample-controls button{width:100%;margin-top:12px}dialog{border:1px solid #beced8;border-radius:10px;padding:24px;max-width:min(420px,calc(100vw - 48px));color:#173147}dialog::backdrop{background:rgba(16,46,64,.38)}footer{font-size:12px;text-align:center;color:#697e8a;margin:32px}@media(max-width:720px){.layout{grid-template-columns:1fr}.sidebar{position:static}.menu-actions{grid-template-columns:1fr 1fr}.card{min-height:0}}
 </style>
-<header><div class="eyebrow">UCSPEC / SAMPLE PRODUCT</div><h1>顧客管理</h1><div>検索から閲覧へ。変更・削除は、閲覧している顧客に対して行います。</div></header>
-<main><div class="bar"><label>権限 <select id="role"><option value="editor">編集可能</option><option value="reader">閲覧専用</option></select></label><label><input id="fail" type="checkbox">次の保存・削除を失敗させる</label><button id="reset">データをリセット</button></div><section id="screen" class="card" aria-live="polite"></section><p class="notice">仕様モデルとは独立した参考アプリです。仕様の検査だけでは、このアプリの実装の正しさは保証されません。再読込でデータをリセットします。通信や永続保存は行いません。</p></main><footer>検索 → 閲覧 → 変更 / 削除確認</footer>
+<header><div class="eyebrow">ucspec / SAMPLE PRODUCT</div><h1>顧客管理システム</h1><div>社内担当者向けの顧客管理と個人通知設定を扱う参考アプリです。</div></header>
+<main><div class="layout"><aside class="sidebar"><div class="menu-title">業務メニュー</div><div class="menu-actions"><button id="customer-menu" type="button" aria-current="true">顧客管理</button><button id="settings-menu" type="button" aria-current="false">設定</button></div><details id="sample-controls" class="sample-controls"><summary>サンプル操作用</summary><p class="muted">通常業務UIとは別の検証用操作です。</p><label>権限 <select id="role"><option value="editor">編集可能</option><option value="reader">閲覧専用</option></select></label><label><input id="fail" type="checkbox">次の更新・削除を失敗させる</label><button id="reset" type="button">データをリセット</button></details></aside><section class="workspace"><section id="screen" class="card" aria-live="polite" aria-busy="false"></section></section></div><p class="notice">仕様モデルとは独立した参考アプリです。仕様の検査だけでは、このアプリの実装の正しさは保証されません。再読込でデータをリセットします。通信や永続化は行いません。</p></main><footer>顧客管理システム / 通知設定</footer>
 <script>
 'use strict';
 (()=>{
- const $=id=>document.getElementById(id);const state={screen:'search',customer:{id:'C001',name:'サンプル商事'},message:'',query:'',draft:'',role:'editor'};
+ const $=id=>document.getElementById(id);
+ const wait=400;
+ const state={screen:'search',customer:{id:'C001',name:'サンプル商事'},message:'',query:'',results:[],draft:'',role:'editor',searched:false,notificationEnabled:false,notificationDraft:false,busy:'',dialog:''};
  const node=(tag,text)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=text;return e};
  const button=(text,fn,kind='')=>{const b=node('button',text);b.type='button';b.className=kind;b.addEventListener('click',fn);return b};
  const move=(screen,message='')=>{state.screen=screen;state.message=message;render()};
- const rejected=()=>{state.message='閲覧専用のため、この操作は実行できません。';render()};
- function render(){
-  const root=$('screen');root.replaceChildren();const heading=node('div');heading.className='screen-title';heading.append(node('h2',{search:'顧客検索',results:'検索結果',view:'顧客を閲覧',editing:'顧客を変更',confirming:'削除の確認'}[state.screen]));const tag=node('span',state.screen);tag.className='state';heading.append(tag);root.append(heading);
-  if(state.screen==='search'||state.screen==='results'){
-   const label=node('label','顧客名 '),query=node('input');query.type='text';query.id='query';query.placeholder='サンプル';query.value=state.query;label.append(query);root.append(label,button('検索',()=>{state.query=query.value.trim();move('results')},'primary'));
-   if(state.screen==='results'){
-    if(state.customer&&(!state.query||state.customer.name.includes(state.query))){const table=node('table'),tr=node('tr');tr.append(node('td',state.customer.id),node('td',state.customer.name));const actions=node('td');actions.append(button('閲覧',()=>move('view')));tr.append(actions);table.append(tr);root.append(table)}else root.append(node('p','対象の顧客が見つかりません。'));
+  const rejected=()=>{state.message='閲覧専用のため、この操作は実行できません。';render()};
+  const SYSTEM_ERROR_MESSAGE='システムエラーが発生しました。時間をおいて再度実行してください。';
+  const handleSystemError=(screen=state.screen)=>{
+   state.busy='';state.dialog='';$('fail').checked=false;state.screen=screen;state.message=SYSTEM_ERROR_MESSAGE;render();
+  };
+ const customerDirty=()=>Boolean(state.customer)&&state.draft!==state.customer.name;
+ const notificationDirty=()=>state.notificationDraft!==state.notificationEnabled;
+ const findResults=()=>state.customer&&(!state.query||state.customer.name.includes(state.query))?[state.customer]:[];
+  const openCustomer=()=>{
+   if(!state.customer||!state.results.length){
+    state.results=findResults();state.searched=true;state.message='対象の顧客が見つかりません。';window.alert('対象の顧客が見つかりません。');render();return;
    }
-  }else if(state.screen==='view'){
-   if(!state.customer){move('results','対象は削除されています。');return}root.append(node('p','顧客ID: '+state.customer.id),node('p','顧客名: '+state.customer.name));const actions=node('div');actions.className='actions';actions.append(button('変更',()=>{if(state.role!=='editor'){rejected();return}state.draft=state.customer.name;move('editing')},'primary'),button('削除',()=>state.role==='editor'?move('confirming'):rejected(),'danger'),button('検索結果へ',()=>move('results')));root.append(actions);
-  }else if(state.screen==='editing'){
-   const label=node('label','顧客名 '),input=node('input');input.type='text';input.id='name';input.value=state.draft;label.append(input);root.append(label);const actions=node('div');actions.className='actions';actions.append(button('保存',()=>{state.draft=input.value;if(state.role!=='editor'||!state.customer){move('results','変更できません。');return}if(!state.draft.trim()){state.message='顧客名は必須です。';render();return}if($('fail').checked){$('fail').checked=false;state.message='保存に失敗しました。入力は保持しています。';render();return}state.customer.name=state.draft.trim();move('view','保存しました。')},'primary'),button('キャンセル',()=>move('view','変更を中止しました。')));root.append(actions);
-  }else if(state.screen==='confirming'){
-   root.append(node('p','この顧客を削除しますか？'));if(state.customer)root.append(node('strong',state.customer.name));const actions=node('div');actions.className='actions';actions.append(button('削除を実行',()=>{if(state.role!=='editor'||!state.customer){move('results','削除できません。');return}if($('fail').checked){$('fail').checked=false;state.message='削除に失敗しました。再試行できます。';render();return}state.customer=null;move('search','削除しました。')},'danger'),button('キャンセル',()=>move('view','削除を中止しました。')));root.append(actions);
+   move('view');
+  };
+ const leaveTo=target=>{
+  if(state.busy)return;
+  const dirty=(state.screen==='editing'&&customerDirty())||(state.screen==='notification'&&notificationDirty());
+  if(dirty&&!window.confirm('未更新の入力を破棄して移動しますか？'))return;
+  if(state.screen==='editing')state.draft=state.customer?state.customer.name:'';
+  if(state.screen==='notification')state.notificationDraft=state.notificationEnabled;
+  if(target==='notification')state.notificationDraft=state.notificationEnabled;
+  state.dialog='';move(target);
+ };
+ const updateControls=()=>{
+  const disabled=Boolean(state.busy);
+  $('customer-menu').disabled=disabled;$('settings-menu').disabled=disabled;
+  $('role').disabled=disabled;$('fail').disabled=disabled;$('reset').disabled=disabled;
+  $('customer-menu').setAttribute('aria-current',state.screen==='notification'?'false':'true');
+  $('settings-menu').setAttribute('aria-current',state.screen==='notification'?'true':'false');
+ };
+ const startCustomerUpdate=()=>{
+  if(state.busy)return;
+  state.draft=$('name').value;
+  if(state.role!=='editor'||!state.customer){move('search','編集できません。');return}
+  if(!state.draft.trim()){state.message='顧客名は必須です。';render();return}
+  state.busy='customer-update';state.message='顧客情報を更新中です。';render();
+  setTimeout(()=>{
+   if(state.busy!=='customer-update')return;
+   if($('fail').checked){handleSystemError();return}
+   state.busy='';
+   state.customer.name=state.draft.trim();state.draft=state.customer.name;move('view','更新しました。');
+  },wait);
+ };
+ const startNotificationUpdate=()=>{
+  if(state.busy)return;
+  state.notificationDraft=$('notification-enabled').checked;
+  state.busy='notification-update';state.message='通知設定を更新中です。';render();
+  setTimeout(()=>{
+   if(state.busy!=='notification-update')return;
+   if($('fail').checked){handleSystemError();return}
+   state.busy='';
+   state.notificationEnabled=state.notificationDraft;state.message='通知設定を更新しました。';render();
+  },wait);
+ };
+ const closeDeleteDialog=(dialog,message='')=>{
+  if(dialog&&dialog.open)dialog.close();
+  state.dialog='';state.message=message;render();
+ };
+ const startDelete=dialog=>{
+  if(state.busy)return;
+  if(dialog.open)dialog.close();
+  state.dialog='delete-busy';state.busy='customer-delete';state.message='顧客情報を削除中です。';render();
+  setTimeout(()=>{
+   if(state.busy!=='customer-delete')return;
+   if($('fail').checked){handleSystemError('view');return}
+   state.busy='';state.dialog='';
+   state.customer=null;state.results=[];state.searched=false;state.screen='search';state.message='削除しました。';render();
+  },wait);
+ };
+ const appendDeleteDialog=root=>{
+  const dialog=node('dialog');dialog.id='delete-dialog';
+  dialog.addEventListener('cancel',event=>{event.preventDefault();if(state.dialog==='delete-confirm')closeDeleteDialog(dialog,'削除を中止しました。')});
+  if(state.dialog==='delete-confirm'){
+   dialog.append(node('p','この顧客を削除しますか？'));if(state.customer)dialog.append(node('strong',state.customer.name));
+   const actions=node('div');actions.className='actions';actions.append(button('はい',()=>startDelete(dialog),'danger'),button('いいえ',()=>closeDeleteDialog(dialog,'')));dialog.append(actions);
+  }else dialog.append(node('p','顧客情報を削除中です。'));
+  root.append(dialog);dialog.showModal();
+ };
+ const renderSearch=root=>{
+  const label=node('label');const query=node('input');query.type='text';query.id='query';query.placeholder='サンプル';query.value=state.query;query.addEventListener('input',()=>{state.query=query.value});label.append(node('span','顧客名 '),query);
+  const search=button('検索',()=>{state.query=query.value.trim();state.results=findResults();state.searched=true;state.message='';if(!state.results.length)window.alert('対象の顧客が見つかりません。');render()},'primary');search.disabled=Boolean(state.busy);const form=node('div');form.className='search-form';form.append(label,search);root.append(form);
+  if(state.searched){
+   if(state.results.length){const table=node('table'),tr=node('tr'),actions=node('td');tr.append(node('td',state.results[0].id),node('td',state.results[0].name));actions.append(button('閲覧',openCustomer));tr.append(actions);table.append(tr);root.append(table)}else root.append(node('p','対象の顧客が見つかりません。'));
   }
-  if(state.message){const msg=node('p',state.message);msg.className='message';msg.setAttribute('role','status');root.append(msg)}
+ };
+ const renderView=root=>{
+  if(!state.customer){state.screen='search';state.message='対象は削除されています。';render();return}
+  root.append(node('p','顧客ID: '+state.customer.id),node('p','顧客名: '+state.customer.name));
+  const actions=node('div');actions.className='actions';const edit=button('編集',()=>{if(state.role!=='editor'){rejected();return}state.draft=state.customer.name;move('editing')},'primary');const remove=button('削除',()=>{if(state.role!=='editor'){rejected();return}state.dialog='delete-confirm';state.message='';render()},'danger');const customer=button('検索結果へ',()=>leaveTo('search'));edit.disabled=remove.disabled=customer.disabled=Boolean(state.busy||state.dialog);actions.append(edit,remove,customer);root.append(actions);
+  if(state.dialog)appendDeleteDialog(root);
+ };
+ const renderEditing=root=>{
+  const label=node('label');const input=node('input');input.type='text';input.id='name';input.value=state.draft;input.addEventListener('input',()=>{state.draft=input.value});label.append(node('span','顧客名 '),input);root.append(label);
+  const actions=node('div');actions.className='actions';const update=button('更新',startCustomerUpdate,'primary');const cancel=button('編集を中止',()=>{state.draft=state.customer?state.customer.name:'';move('view','編集を中止しました。')});update.disabled=cancel.disabled=input.disabled=Boolean(state.busy);actions.append(update,cancel);root.append(actions);
+ };
+ const renderNotification=root=>{
+  const label=node('label');const input=node('input');input.type='checkbox';input.id='notification-enabled';input.checked=state.notificationDraft;input.disabled=Boolean(state.busy);input.addEventListener('change',()=>{state.notificationDraft=input.checked;state.message='';const status=root.querySelector('[role="status"]');if(status)status.remove()});label.append(input,node('span','顧客情報の更新通知'));root.append(label);
+  const actions=node('div');actions.className='actions';const update=button('通知設定を更新',startNotificationUpdate,'primary');const cancel=button('編集を取り消す',()=>{state.notificationDraft=state.notificationEnabled;state.message='編集を取り消しました。';render()});update.disabled=cancel.disabled=Boolean(state.busy);actions.append(update,cancel);root.append(actions);
+ };
+ function render(){
+  const root=$('screen');root.querySelectorAll('dialog[open]').forEach(dialog=>dialog.close());root.replaceChildren();root.setAttribute('aria-busy',state.busy?'true':'false');updateControls();
+  const heading=node('div');heading.className='screen-title';heading.append(node('h2',{search:'顧客検索',view:'顧客を閲覧',editing:'顧客編集',notification:'通知設定'}[state.screen]));root.append(heading);
+  if(state.screen==='search')renderSearch(root);else if(state.screen==='view')renderView(root);else if(state.screen==='editing')renderEditing(root);else if(state.screen==='notification')renderNotification(root);
+  if(state.message){const msg=node('p',state.message);msg.className=state.busy?'message busy':'message';msg.setAttribute('role','status');root.append(msg)}
  }
- $('role').onchange=()=>{state.role=$('role').value;move('search')};$('reset').onclick=()=>{state.customer={id:'C001',name:'サンプル商事'};state.query='';$('fail').checked=false;move('search','データをリセットしました。')};render();
+ $('customer-menu').onclick=()=>{if(state.screen!=='search')leaveTo('search')};$('settings-menu').onclick=()=>{if(state.screen!=='notification')leaveTo('notification')};
+ $('role').onchange=()=>{state.role=$('role').value;state.draft=state.customer?state.customer.name:'';state.notificationDraft=state.notificationEnabled;state.dialog='';state.screen='search';state.message='';render()};
+ $('reset').onclick=()=>{state.customer={id:'C001',name:'サンプル商事'};state.query='';state.results=[];state.searched=false;state.draft='';state.notificationEnabled=false;state.notificationDraft=false;state.dialog='';state.busy='';$('fail').checked=false;state.screen='search';state.message='データをリセットしました。';render()};
+ render();
 })();
 </script></html>

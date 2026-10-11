@@ -1,0 +1,109 @@
+{
+  "schemaVersion": "1",
+  "variables": {
+    "notificationEnabled": {
+      "domain": [
+        false,
+        true
+      ],
+      "initial": false,
+      "description": "本人の顧客情報の更新通知設定。顧客情報の更新通知を受け取るか。"
+    },
+    "notificationDraft": {
+      "domain": [
+        false,
+        true
+      ],
+      "initial": false,
+      "description": "本人の顧客情報の更新通知設定で編集中の値"
+    },
+    "notificationOutcome": {
+      "domain": [
+        "none",
+        "updated",
+        "cancelled"
+      ],
+      "initial": "none"
+    }
+  },
+  "screens": {
+    "notificationSettings": {
+      "label": "通知設定",
+      "description": "顧客情報の更新通知を同じ画面で編集・更新・取消する。"
+    }
+  },
+  "states": {
+    "notificationSettings": {
+      "label": "通知設定",
+      "screen": "notificationSettings",
+      "layoutLayer": 0,
+      "events": [
+        "editNotifications",
+        "updateNotifications",
+        "cancelNotifications",
+        "chooseCustomers"
+      ]
+    }
+  },
+  "events": {
+    "editNotifications": {
+      "label": "メール通知を編集",
+      "source": "user",
+      "parameters": {
+        "enabled": [
+          false,
+          true
+        ]
+      }
+    },
+    "updateNotifications": {
+      "label": "更新",
+      "source": "user"
+    },
+    "cancelNotifications": {
+      "label": "編集取消",
+      "source": "user"
+    }
+  },
+  "transitions": {
+    "editNotification": {
+      "defaultVisible": true,
+      "from": "notificationSettings",
+      "to": "notificationSettings",
+      "event": "editNotifications",
+      "action": "下書きを編集",
+      "set": {
+        "notificationDraft": {
+          "param": "enabled"
+        },
+        "notificationOutcome": "none"
+      }
+    },
+    "updateNotification": {
+      "defaultVisible": true,
+      "from": "notificationSettings",
+      "to": "notificationSettings",
+      "event": "updateNotifications",
+      "action": "通知設定を更新",
+      "set": {
+        "notificationEnabled": {
+          "var": "notificationDraft"
+        },
+        "notificationOutcome": "updated"
+      }
+    },
+    "cancelNotification": {
+      "defaultVisible": true,
+      "from": "notificationSettings",
+      "to": "notificationSettings",
+      "event": "cancelNotifications",
+      "action": "確定済み設定を復元",
+      "set": {
+        "notificationDraft": {
+          "var": "notificationEnabled"
+        },
+        "notificationOutcome": "cancelled"
+      }
+    }
+  }
+}

@@ -7,12 +7,12 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/nuitsjp/usecase-spec/internal/analysis"
-	"github.com/nuitsjp/usecase-spec/internal/compiler"
-	"github.com/nuitsjp/usecase-spec/internal/model"
-	"github.com/nuitsjp/usecase-spec/internal/project"
-	"github.com/nuitsjp/usecase-spec/internal/report"
-	"github.com/nuitsjp/usecase-spec/internal/update"
+	"github.com/nuitsjp/ucspec/internal/analysis"
+	"github.com/nuitsjp/ucspec/internal/compiler"
+	"github.com/nuitsjp/ucspec/internal/model"
+	"github.com/nuitsjp/ucspec/internal/project"
+	"github.com/nuitsjp/ucspec/internal/report"
+	"github.com/nuitsjp/ucspec/internal/update"
 	"io"
 	"io/fs"
 	"os"
@@ -170,7 +170,7 @@ func inspect(command string, args []string, out, errOut io.Writer, d Dependencie
 		}
 	}
 	s, compileErr := compiler.Load(absolute, d.Codec)
-	output := filepath.Join(root, "artifacts", "usecase-spec")
+	output := filepath.Join(root, "artifacts", "ucspec")
 	if s != nil {
 		if filepath.IsAbs(s.Project.Output) {
 			return fail(errOut, fmt.Errorf("configured output must be relative to product root"))
@@ -399,7 +399,7 @@ func probe(ctx context.Context, data []byte, expected string) error {
 	return nil
 }
 
-const usage = `UCSPEC — structured use-case specifications and finite-model verification
+const usage = `ucspec — structured use-case specifications and finite-model verification
 
 Commands:
   ucspec init --dir PRODUCT --name NAME [--repo OWNER/REPO] [--dry-run]

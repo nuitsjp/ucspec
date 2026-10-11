@@ -3,9 +3,9 @@ package analysis
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/nuitsjp/usecase-spec/internal/compiler"
-	"github.com/nuitsjp/usecase-spec/internal/engine"
-	"github.com/nuitsjp/usecase-spec/internal/model"
+	"github.com/nuitsjp/ucspec/internal/compiler"
+	"github.com/nuitsjp/ucspec/internal/engine"
+	"github.com/nuitsjp/ucspec/internal/model"
 	"sort"
 )
 
@@ -22,11 +22,17 @@ func Analyze(s *model.Spec, version string) *model.Report {
 	e := engine.New(s)
 	global := Explore(e, s.Project.Initial, nil, nil)
 	r.Complete = global.Complete
-	r.ReachableStates = len(global.Nodes)
+	for _, n := range global.Nodes {
+		if !s.IsChoice(n.State.State) {
+			r.ReachableStates++
+		}
+	}
 	r.Diagnostics = append(r.Diagnostics, global.Diagnostics...)
 	reachableStates := map[string]bool{}
 	for _, n := range global.Nodes {
-		reachableStates[n.State.State] = true
+		for _, id := range s.StatePath(n.State.State) {
+			reachableStates[id] = true
+		}
 	}
 	for _, id := range model.Keys(s.States) {
 		if !reachableStates[id] && global.Complete {
@@ -109,7 +115,13 @@ func Analyze(s *model.Spec, version string) *model.Report {
 			}
 		}
 		cov := CoverageFor(s, u, g, scenarios)
-		ur := model.UseCaseResult{ID: uid, Coverage: cov, ReachableStates: len(g.Nodes), Complete: g.Complete}
+		stableCount := 0
+		for _, n := range g.Nodes {
+			if !s.IsChoice(n.State.State) {
+				stableCount++
+			}
+		}
+		ur := model.UseCaseResult{ID: uid, Coverage: cov, ReachableStates: stableCount, Complete: g.Complete, ReviewBasisHash: reviewBasisHash(s, uid, version)}
 		for _, c := range cov {
 			if !c.Complete {
 				ur.Complete = false
@@ -123,6 +135,7 @@ func Analyze(s *model.Spec, version string) *model.Report {
 				r.Diagnostics = append(r.Diagnostics, model.Diagnostic{Code: "infeasible-requirements", Severity: "warning", Subject: "usecases/" + uid, Message: fmt.Sprintf("%s has %d infeasible control paths (listed, not silently counted)", c.Kind, len(c.Infeasible))})
 			}
 		}
+		ur.CoverageReviews = evaluateCoverageReviews(u, ur, scenarios)
 		r.UseCases = append(r.UseCases, ur)
 	}
 	for _, id := range model.Keys(s.Regressions) {
@@ -168,6 +181,9 @@ func Properties(e *engine.Engine, g *Graph) []model.Check {
 		truth := make([]bool, len(g.Nodes))
 		evalError := false
 		for i, n := range g.Nodes {
+			if e.Spec.IsChoice(n.State.State) {
+				continue // State properties describe stable configurations.
+			}
 			v, err := engine.Predicate(e.Spec, n.State, p.Assert)
 			if err != nil {
 				c.Status = "failed"
@@ -185,7 +201,7 @@ func Properties(e *engine.Engine, g *Graph) []model.Check {
 		switch p.Kind {
 		case "invariant":
 			for i, ok := range truth {
-				if !ok {
+				if !ok && !e.Spec.IsChoice(g.Nodes[i].State.State) {
 					c.Status = "failed"
 					c.Witness = copyWitness(g.Nodes[i].Witness)
 					break
@@ -283,57 +299,91 @@ func definitions(s *model.Spec, r *model.Report) {
 		}
 	}
 	put("states", s.States)
+	put("choices", s.Choices)
 	put("screens", s.Screens)
 	put("events", s.Events)
 	put("conditions", s.Conditions)
 	put("variables", s.Variables)
 	put("transitions", s.Transitions)
+	put("usecasePackages", s.UseCasePackages)
 	put("usecases", s.UseCases)
+	put("commonRules", s.CommonRules)
 	put("properties", s.Properties)
 	put("decisions", s.Decisions)
 	put("regressions", s.Regressions)
 	r.Definitions["project"] = model.Hash(s.Project)
 	predecessors := map[string][]string{}
 	for _, t := range s.Transitions {
-		predecessors[t.To] = append(predecessors[t.To], t.From)
+		for _, to := range transitionTargets(s, t) {
+			predecessors[to] = append(predecessors[to], s.Leaves(t.From)...)
+		}
 	}
 	// Conservative transitive dependency closure: conditions and state variables may
 	// affect any path. Prefer over-reporting impact to silently missing an effect.
 	for _, id := range model.Keys(s.UseCases) {
 		u := s.UseCases[id]
 		deps := map[string]bool{"project": true, "usecases/" + id: true}
+		for rule := range s.CommonRules {
+			deps["commonRules/"+rule] = true
+		}
+		for packageID := u.Package; packageID != "" && !deps["usecasePackages/"+packageID]; packageID = s.UseCasePackages[packageID].Parent {
+			deps["usecasePackages/"+packageID] = true
+		}
 		states := map[string]bool{}
+		queue := []string{}
+		addState := func(state string) {
+			for _, active := range s.StatePath(state) {
+				if !states[active] {
+					states[active] = true
+					queue = append(queue, active)
+				}
+			}
+		}
 		for _, start := range u.Starts {
-			states[start.State] = true
+			addState(start.State)
+			if leaf, err := s.Enter(start.State); err == nil {
+				addState(leaf)
+			}
 		}
 		for _, tr := range u.Scope {
 			t := s.Transitions[tr]
 			deps["transitions/"+tr] = true
-			states[t.From] = true
-			states[t.To] = true
-			deps["events/"+t.Event] = true
+			addState(t.From)
+			addState(t.To)
+			for _, leaf := range s.Leaves(t.From) {
+				addState(leaf)
+			}
+			if leaf, err := s.Enter(t.To); err == nil {
+				addState(leaf)
+			}
+			if t.Event != "" {
+				deps["events/"+t.Event] = true
+			}
 		}
 		// Start reachability also depends on paths from project.initial before scope.
-		// Include control-state predecessors conservatively, without evaluating guards.
-		queue := model.Keys(states)
+		// Include control-state predecessors conservatively, accounting for default
+		// entry and inherited transitions without evaluating guards.
 		for i := 0; i < len(queue); i++ {
 			for _, from := range predecessors[queue[i]] {
-				if !states[from] {
-					states[from] = true
-					queue = append(queue, from)
-				}
+				addState(from)
 			}
 		}
 		// Exploration selects every accepted event before restricting paths to scope.
 		for state := range states {
+			if s.IsChoice(state) {
+				deps["choices/"+state] = true
+				continue
+			}
 			deps["states/"+state] = true
 			deps["screens/"+s.States[state].Screen] = true
 			for _, event := range s.States[state].Events {
 				deps["events/"+event] = true
 			}
 		}
+		// A transition outside scope can still change event determinism or
+		// shadow an inherited transition. Scope never changes dispatch rules.
 		for tr, t := range s.Transitions {
-			if states[t.From] && model.Contains(s.States[t.From].Events, t.Event) {
+			if states[t.From] {
 				deps["transitions/"+tr] = true
 			}
 		}

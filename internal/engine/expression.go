@@ -3,7 +3,7 @@ package engine
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/nuitsjp/usecase-spec/internal/model"
+	"github.com/nuitsjp/ucspec/internal/model"
 )
 
 // Expressions are data, never executable user code. Boolean operands are evaluated
@@ -34,6 +34,15 @@ func (e *Evaluation) Eval(x any) (any, error) {
 	}
 	for op, arg := range m {
 		switch op {
+		case "inState":
+			id, ok := arg.(string)
+			if !ok {
+				return nil, fmt.Errorf("inState must name a state")
+			}
+			if _, ok := e.Spec.States[id]; !ok {
+				return nil, fmt.Errorf("unknown state %s", id)
+			}
+			return e.Spec.InState(e.State.State, id), nil
 		case "var":
 			k, ok := arg.(string)
 			if !ok {
@@ -185,6 +194,14 @@ func ValidateExpr(s *model.Spec, x any, params map[string][]any, chain map[strin
 	}
 	for op, arg := range m {
 		switch op {
+		case "inState":
+			id, ok := arg.(string)
+			if !ok {
+				return fmt.Errorf("inState must name a state")
+			}
+			if _, ok := s.States[id]; !ok {
+				return fmt.Errorf("unknown state %s", id)
+			}
 		case "var":
 			k, ok := arg.(string)
 			if !ok {

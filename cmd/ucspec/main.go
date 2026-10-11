@@ -3,10 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/nuitsjp/usecase-spec/internal/adapters"
-	"github.com/nuitsjp/usecase-spec/internal/app"
-	"github.com/nuitsjp/usecase-spec/internal/assets"
-	"github.com/nuitsjp/usecase-spec/internal/buildinfo"
+	"github.com/nuitsjp/ucspec/internal/adapters"
+	"github.com/nuitsjp/ucspec/internal/app"
+	"github.com/nuitsjp/ucspec/internal/assets"
+	"github.com/nuitsjp/ucspec/internal/buildinfo"
 	"os"
 )
 

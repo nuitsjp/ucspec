@@ -1,5 +1,5 @@
 param(
-    [string]$Repository = 'nuitsjp/usecase-spec',
+    [string]$Repository = 'nuitsjp/ucspec',
     [ValidateSet('private','public')][string]$Visibility = 'private'
 )
 $ErrorActionPreference = 'Stop'
@@ -25,7 +25,7 @@ try {
     git diff --cached --quiet
     if ($LASTEXITCODE -ne 0) {
         $email = "$($identity.id)+$($identity.login)@users.noreply.github.com"
-        git -c "user.name=$($identity.login)" -c "user.email=$email" commit -m 'Initial UCSPEC implementation, tests, documentation and sample'
+        git -c "user.name=$($identity.login)" -c "user.email=$email" commit -m 'Initial ucspec implementation, tests, documentation and sample'
         if ($LASTEXITCODE -ne 0) { throw 'Initial commit failed.' }
     }
     gh repo create $Repository "--$Visibility" --source . --remote origin --push --description 'Structured use-case specifications, finite model checks, coverage and standalone HTML'

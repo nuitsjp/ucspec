@@ -3,6 +3,7 @@
   "usecases": {
     "viewCustomer": {
       "name": "顧客を閲覧する",
+      "package": "customerManagement",
       "actor": "利用者",
       "goal": "対象の顧客情報を確認する",
       "starts": [
@@ -20,20 +21,48 @@
         }
       ],
       "end": {
-        "eq": [
+        "or": [
           {
-            "var": "$state"
+            "eq": [
+              {
+                "var": "$state"
+              },
+              "view"
+            ]
           },
-          "view"
+          {
+            "and": [
+              {
+                "eq": [
+                  {
+                    "var": "$state"
+                  },
+                  "search"
+                ]
+              },
+              {
+                "eq": [
+                  {
+                    "var": "outcome"
+                  },
+                  "empty"
+                ]
+              }
+            ]
+          }
         ]
       },
       "scope": [
         "searchFound",
-        "openView"
+        "openCustomer",
+        "openView",
+        "openGone"
       ],
       "scenarios": {
         "editor": {
           "name": "顧客を閲覧する（editor）",
+          "goal": "編集権限を持つ利用者が対象顧客の情報を確認する",
+          "expectedOutcome": "検索した対象顧客が存在することを再確認し、顧客閲覧画面でその情報を参照できる",
           "start": {
             "state": "search",
             "values": {
@@ -42,7 +71,41 @@
           },
           "steps": [
             {
-              "transition": "searchFound"
+              "transition": "searchFound",
+              "expect": {
+                "and": [
+                  {
+                    "eq": [
+                      {
+                        "var": "$state"
+                      },
+                      "search"
+                    ]
+                  },
+                  {
+                    "eq": [
+                      {
+                        "var": "searched"
+                      },
+                      true
+                    ]
+                  },
+                  {
+                    "eq": [
+                      {
+                        "var": "exists"
+                      },
+                      true
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "transition": "openCustomer",
+              "input": {
+                "exists": true
+              }
             },
             {
               "transition": "openView"
@@ -71,6 +134,8 @@
         },
         "reader": {
           "name": "顧客を閲覧する（reader）",
+          "goal": "閲覧権限の利用者が対象顧客の情報を確認する",
+          "expectedOutcome": "閲覧権限の範囲で、存在を再確認した対象顧客の情報を参照できる",
           "start": {
             "state": "search",
             "values": {
@@ -79,7 +144,41 @@
           },
           "steps": [
             {
-              "transition": "searchFound"
+              "transition": "searchFound",
+              "expect": {
+                "and": [
+                  {
+                    "eq": [
+                      {
+                        "var": "$state"
+                      },
+                      "search"
+                    ]
+                  },
+                  {
+                    "eq": [
+                      {
+                        "var": "searched"
+                      },
+                      true
+                    ]
+                  },
+                  {
+                    "eq": [
+                      {
+                        "var": "exists"
+                      },
+                      true
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "transition": "openCustomer",
+              "input": {
+                "exists": true
+              }
             },
             {
               "transition": "openView"
@@ -101,6 +200,111 @@
                     "var": "exists"
                   },
                   true
+                ]
+              }
+            ]
+          }
+        },
+        "disappeared": {
+          "name": "顧客を閲覧する前に顧客が消失し、再検索してアラートを表示する",
+          "goal": "検索後に閲覧対象が消失したことを確認する",
+          "expectedOutcome": "消失した顧客の閲覧を開始せず、再検索とアラート表示を行って検索画面に戻る",
+          "start": {
+            "state": "search",
+            "values": {
+              "role": "editor"
+            }
+          },
+          "steps": [
+            {
+              "transition": "searchFound"
+            },
+            {
+              "transition": "openCustomer",
+              "input": {
+                "exists": false
+              }
+            },
+            {
+              "transition": "openGone",
+              "expect": {
+                "and": [
+                  {
+                    "eq": [
+                      {
+                        "var": "$state"
+                      },
+                      "search"
+                    ]
+                  },
+                  {
+                    "eq": [
+                      {
+                        "var": "searched"
+                      },
+                      true
+                    ]
+                  },
+                  {
+                    "eq": [
+                      {
+                        "var": "searchAlert"
+                      },
+                      true
+                    ]
+                  },
+                  {
+                    "eq": [
+                      {
+                        "var": "outcome"
+                      },
+                      "empty"
+                    ]
+                  }
+                ]
+              }
+            }
+          ],
+          "expect": {
+            "and": [
+              {
+                "eq": [
+                  {
+                    "var": "$state"
+                  },
+                  "search"
+                ]
+              },
+              {
+                "eq": [
+                  {
+                    "var": "searched"
+                  },
+                  true
+                ]
+              },
+              {
+                "eq": [
+                  {
+                    "var": "searchAlert"
+                  },
+                  true
+                ]
+              },
+              {
+                "eq": [
+                  {
+                    "var": "outcome"
+                  },
+                  "empty"
+                ]
+              },
+              {
+                "eq": [
+                  {
+                    "var": "exists"
+                  },
+                  false
                 ]
               }
             ]

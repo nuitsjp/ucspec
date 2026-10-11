@@ -23,8 +23,8 @@
 ## 初期化
 
 ```powershell
-ucspec.exe init --dir C:\work\product-a --name Product-A --repo nuitsjp/usecase-spec --dry-run
-ucspec.exe init --dir C:\work\product-a --name Product-A --repo nuitsjp/usecase-spec
+ucspec.exe init --dir C:\work\product-a --name Product-A --repo nuitsjp/ucspec --dry-run
+ucspec.exe init --dir C:\work\product-a --name Product-A --repo nuitsjp/ucspec
 ```
 
 `--dir` の既定値は現在のディレクトリです。`--name` 省略時はディレクトリ名、`--repo` 省略時はCLIのビルド時に指定した更新元です。`--no-tool` はCLIをコピーしないソース開発用オプションです。
@@ -33,6 +33,8 @@ ucspec.exe init --dir C:\work\product-a --name Product-A --repo nuitsjp/usecase-
 
 初期化は「既存仕様を新形式へマイグレーションする」機能ではありません。別版での再初期化による自動上書きはしません。
 
+プロジェクト用Agent Skillを `.agents/skills/ucspec-authoring/SKILL.md` に配置します。顧客との接点を持つ開発者がユースケース・シナリオの目的と期待結果を記述し、未網羅項目から追加シナリオや設計要求を検討する際に使います。対応するエージェントで `$ucspec-authoring` を指定するか、スキル本文を読み込ませてください。ホーム側のスキルや設定は変更しません。既存の異なるスキルも初期化時の衝突として保護します。
+
 ## 検査・仕様書生成
 
 プロダクトのルートで:
@@ -40,7 +42,7 @@ ucspec.exe init --dir C:\work\product-a --name Product-A --repo nuitsjp/usecase-
 ```powershell
 .\scripts\ucspec.ps1 check
 .\scripts\ucspec.ps1 build
-Start-Process .\artifacts\usecase-spec\index.html
+Start-Process .\artifacts\ucspec\index.html
 ```
 
 指定できるオプション:
@@ -56,11 +58,31 @@ Start-Process .\artifacts\usecase-spec\index.html
 
 ## HTMLの読み方
 
-全体図と各ユースケースの図は同一モデルから生成されます。ユースケースを選択し、シナリオを押すと対応する遷移が強調表示されます。矢印を選択するとガードやアクションの詳細を表示します。
+全体図と各ユースケースの図は同一モデルから生成されます。ユースケースを選択し、シナリオを押すと対応する外部・内部遷移が強調表示されます。矢印または状態枠内の内部遷移を選択するとガードやアクションの詳細を表示します。
+
+外部・内部遷移の通常表示は`defaultVisible`で指定します。`true`の遷移は通常図のレイアウトへ含め、未指定または`false`の遷移は通常図から除外します。シナリオ、未網羅候補、反例を選択した経路は`defaultVisible`に関係なく通常表示の集合へ加わります。図の「全遷移を表示」を切り替えると全遷移を配置できます。表示集合が変わると、elk-goの配置結果に応じて状態の位置、複合状態の枠高さ、図幅が変わります。非表示の内部遷移行は通常図の枠高さに含めません。選択中の経路は保ったまま、対応する生成済み図へ切り替わります。状態・choiceを含むモデル、ユースケースの`scope`、実行や網羅率は変わりません。
+
+左メニューはパッケージ、その配下のユースケース、シナリオの階層です。パッケージはさらにネストでき、各階層を開閉できます。シナリオを選ぶと所属するユースケースの図と網羅率へ切り替わり、その経路を表示します。シナリオ名の検索では、該当項目とその祖先を表示します。回帰シナリオは独立したグループにあり、選ぶと全体図に経路を表示します。
+
+サンプルは社内担当者が使う顧客管理システムです。初期画面は顧客検索で、参考アプリの左メニューには「顧客管理」「設定」を常設しています。顧客管理では検索・閲覧・編集・削除を、設定では顧客情報の更新通知をメールで受け取るかどうかを同じ画面で編集・更新できます。仕様書の左メニューはパッケージ→ユースケース→シナリオの分類であり、参考アプリのメニューは機能への移動です。通信、実メール送信、永続化はなく、役割・失敗・リセットの検証補助を別枠で表示します。
+
+顧客検索は画面`search`で`search`/`open`イベントを受け付ける単一の末端状態です。検索条件は常に表示します。`searchFound`（顧客あり）と`searchEmpty`（0件）は`search`から`search`へのガード付き内部遷移で、検索状態を離れず一覧表示または0件アラートを更新します。`searched`は検索実行済みだけを記録します。`open.when`は`searched`かつ`exists`（一覧に閲覧対象がある）で、`open`イベントは閲覧時点の存在確認結果を表す有限入力`exists`（`true`/`false`）を持ちます。`openCustomer`は入力値を現在の`exists`へ反映してから`customerAvailability`という選択疑似状態へ入り、`openView`は顧客ありなら`view`へ、`openGone`は顧客なしなら`search`へ戻って再検索とアラート表示を行います。この入力はユーザーが任意に選ぶ値ではなく、実DBを使わないサンプルで閲覧時の再確認を抽象化したものです。検索前・0件・N件を別の子状態には分けません。顧客編集は単一の末端状態`edit`です。編集開始イベント`edit`は`when`で`exists`かつ`canEdit`のときだけ受理し、対象なしまたは権限不足ではイベントを受け付けず、状態と顧客を保持します。`update`イベントは`valid` bool入力を持ち、`when`で有効な入力だけを受理します。入力不備は更新前に拒否し、失敗分岐は描画しません。有効な入力だけが`updateCustomer`で`edit`から`view`へ直接遷移し、`outcome`と`revision`を`updated`にします。顧客閲覧は単一の末端状態`view`です。削除イベント`requestDelete`（ラベル「削除」）は`when`で`exists`かつ`canEdit`のときだけ受理し、対象なしまたは権限不足ではイベントを受け付けず、状態と顧客を保持します。受理後は`confirmed` bool入力で同じイベントを`true`/`false`に分岐し、`true`なら`confirmDelete`（ガードラベル「はい」、アクション「削除」）で`search`へ遷移し、`false`なら`cancelDelete`（ガードラベル「いいえ」、アクション空）で`view`に留まります。`edit`/`requestDelete`の対象なし・権限不足は、`reject:true`を指定した回帰シナリオでイベント非受理と状態・顧客保持を検査します。設定は`notificationSettings`という単一の末端状態で、`editNotification`による下書きの編集、`updateNotification`による更新、`cancelNotification`による取消を同じ状態への自己遷移として表します。通知の成功・失敗結果、進捗、再試行は仕様に含めません。未更新の入力がある状態で機能を切り替えると破棄確認を表示し、取消時は入力を保持します。
+
+全体図、ユースケース別図、複合状態の枠内は、共通のELK設定で上から下（`DOWN`）へ自動配置し、`NETWORK_SIMPLEX`をノード配置方式に使います。この設定は図全体へ共通に適用し、個別状態の配置属性は追加しません。状態の任意属性`layoutLayer`は同じ親の中での配置順だけを指定し、非負整数の小さい層を上に、同じ層を同じ配置帯にします。異なる層の順序は保証され、同じ層の帯内の上下・横配置は自動です。同じY座標や横一列は保証しません。未指定の状態とchoiceは自動配置に任せます。全体図とユースケース別図の外側開始を示す黒丸は各図の最上段・左右中央に固定し、複数の開始状態がある場合は開始記号の列全体を中央に並べます（個々の記号は重ねません）。その他の最上位の状態・ディシジョンを下へ配置します。複合状態の枠内にあるinitial、横位置、間隔、矢印は自動です。`layoutLayer`はピクセル位置や層の高さを指定するものではありません。黒丸とそこから出る矢印は開始点を示します。全体図ではプロジェクトのinitial、ユースケース別図ではそのstartsを参照します。同じ状態に異なる初期データがある場合、開始記号は一つにまとめます。複合状態の枠内にある開始矢印は、その状態へ入ったときのinitialを示します。開始の矢印は業務遷移ではないため、遷移の詳細表示や網羅率には含めません。
+
+遷移の`kind`を省略するか`external`にすると外部遷移、`internal`にすると内部遷移です。内部遷移は同じ通常stateをfrom/toに指定し、イベント・ガード・アクション・`set`を実行しても現在の子stateを保ちます。菱形は選択疑似状態です。choiceへ入る遷移の後に、ガードが成立する一つの分岐を自動的に選択します。図の外部遷移ラベルは複数行の「イベント [ガード] / アクション」で、位置でイベントとアクションを区別します。内部遷移は状態枠内に「イベント [ガード] / アクション」を表示し、自己ループ矢印は付けません。イベントはユーザー操作・時間経過・外部処理の応答などの契機、アクションはシステムの振る舞いで、ラベルは簡潔な語句で記述します。`action`キーは必須ですが、イベントを受け付けるだけの遷移は空文字にできます。`source`（`user`/`system`/`timer`）は定義データとして保持しますが、「ユーザー：」「システム：」「タイマー：」の接頭辞は図に表示しません。`system`イベントは外部処理の応答を表します。`guardLabel`があればその文言を表示します。表示用ラベルは判定式ではないため、結果の説明だけを変える場合は`guard`を変更しません。choiceの分岐はシナリオの経路にも個別に現れ、入力を持ちません。分岐の重複・抜け、選択ガードに合わないシナリオは検査エラーです。
+
+Documentのルートにある`commonRules`は、DBなどのシステムエラーや進捗表示に関する共通ルールをHTMLの「共通ルール」へ表示します。これは有限性質を記述する`properties`とは別の文章で、モデル検査はシステムエラー処理の実装を保証しません。
+
+シナリオ詳細では、目的と期待結果を操作列より先に読みます。「モデル上の期待式」は有限モデルが検査する内容です。自然言語の期待結果や実アプリの動作が検証済みという意味ではありません。
+
+未網羅項目には「未評価」「シナリオ追加が必要」「既存シナリオで代表」「禁止すべき」の評価を表示します。理由・代表シナリオ・設計要求を確認してください。評価を記録しても網羅率は上がりません。仕様変更などで古くなった記録は「再評価が必要」として表示されます。変更影響も再確認の候補であり、文章の意味や顧客への再確認の必要性を自動で決定した結果ではありません。
+
+評価記録を編集するときは、report.jsonの対象usecaseの `reviewBasisHash` と `coverage[].missing[].id` を使用します。HTMLの評価記録用の情報でも現在のハッシュを確認できます。記述ガイドに形式、プロジェクト用スキルに指標ごとの評価方針があります。HTMLは読み取り専用であり、判断を自動保存・承認しません。
 
 各指標の分母、分子、未網羅項目、成立不能項目、解析完了状態を確認してください。反例や候補経路は仕様を修正する材料であり、自動的に承認済みシナリオへ登録されません。未網羅条件の一覧は条件値を示しますが、その条件ごとの独立した最短シナリオ候補生成は初版にはありません。
 
-HTMLは外部JS/CSS、外部フォント、通信、Node.js、CLIを使わず閲覧できます。生成時にレイアウトを完了しています。SVGラベルのサイズはフォント非依存の概算であり、実際の日本語フォント次第で余白調整が必要な場合があります。
+HTMLは外部JS/CSS、外部フォント、通信、Node.js、CLIを使わず閲覧できます。CLI生成時に表示集合ごとのSVGを実際のelk-goで配置して埋め込むため、ブラウザーは生成済み図を切り替えるだけで自動レイアウトを行いません。SVGラベルのサイズはフォント非依存の概算であり、実際の日本語フォント次第で余白調整が必要な場合があります。
 
 ## 終了コード
 
@@ -75,8 +97,8 @@ HTMLは外部JS/CSS、外部フォント、通信、Node.js、CLIを使わず閲
 ## 更新: 単独CLI
 
 ```powershell
-C:\Tools\ucspec\ucspec.exe self-update --check --repo nuitsjp/usecase-spec
-C:\Tools\ucspec\ucspec.exe self-update --version 0.2.0 --repo nuitsjp/usecase-spec
+C:\Tools\ucspec\ucspec.exe self-update --check --repo nuitsjp/ucspec
+C:\Tools\ucspec\ucspec.exe self-update --version 0.2.0 --repo nuitsjp/ucspec
 ```
 
 `--version` を省略すると最新の公開済み安定版を選びます。これは明示コマンドを実行したときだけの動作で、定期確認やバックグラウンド更新はありません。`--check` はネットワークで情報を取得しますが、実行ファイルを変更しません。
@@ -89,7 +111,7 @@ HTTPSのGitHub APIから対象版のZIPとchecksums.txtを取得し、SHA-256、
 
 ```powershell
 # プロダクトルート
-.\scripts\ucspec.ps1 self-update --project . --version 0.2.0 --repo nuitsjp/usecase-spec
+.\scripts\ucspec.ps1 self-update --project . --version 0.2.0 --repo nuitsjp/ucspec
 .\scripts\ucspec.ps1 build
 ```
 
@@ -111,7 +133,7 @@ HTTPSのGitHub APIから対象版のZIPとchecksums.txtを取得し、SHA-256、
 |---|---|
 | 版が一致しない | `.ucspec-version` と `version` を確認。固定版ランチャーを使う |
 | 解析未完了 | 状態/パス/組み合わせの上限を確認。有限データの抽象化を見直す。闇雲に上限を増やさない |
-| no uniquely enabled / gap | 状態のevents、event.when、同じイベントのガード分割を確認 |
+| no uniquely enabled / gap | 状態のevents、event.when、同じイベントのガード分割、choiceの分岐のguardを確認 |
 | 起点が到達不能 | project.initial とusecase.startsのデータが一致するか確認 |
 | 既存ファイルとの衝突 | `init --dry-run` で対象を確認。手動編集を自動破棄しない |
 | 更新HTTPエラー | Release公開状況、タグ、owner/repo、権限、レート制限を確認 |

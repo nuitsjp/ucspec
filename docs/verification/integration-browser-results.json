@@ -1,0 +1,23 @@
+{
+  "passed": true,
+  "checks": [
+    "renderer: system and all five use case diagrams show the defined start markers and arrows at the top center",
+    "renderer: package navigation, visible layout variants, selected hidden transition and zoom",
+    "renderer: use case navigation, SVG, scenario table and path highlighting",
+    "renderer: purpose and expected outcome precede steps; model assertion is separate",
+    "renderer: missing-path candidate navigation",
+    "renderer: no JavaScript or CSP errors",
+    "renderer: grouped coverage reviews, reasons, design requirements and representative scenario navigation",
+    "renderer: changed intent invalidates review annotations while preserving raw coverage",
+    "sample: invalid name rejected",
+    "sample: update failure preserves input; retry succeeds",
+    "sample: delete confirmation, failure, retry, and no resurrection on search",
+    "sample: reader cannot edit",
+    "sample: customer edit navigation confirmation preserves input",
+    "sample: notification navigation, failure retry, cancel restore and disable update"
+  ],
+  "errors": [],
+  "browser": "155.0.4283.45",
+  "cliVersion": "0.1.11",
+  "method": "UTF-8 bytes passed to setContent with original newlines; not file:// verification"
+}

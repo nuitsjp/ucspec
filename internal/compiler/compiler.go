@@ -5,8 +5,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/nuitsjp/usecase-spec/internal/engine"
-	"github.com/nuitsjp/usecase-spec/internal/model"
+	"github.com/nuitsjp/ucspec/internal/engine"
+	"github.com/nuitsjp/ucspec/internal/model"
 	"io"
 	"os"
 	"path/filepath"
@@ -282,9 +282,20 @@ func Validate(s *model.Spec) []model.Diagnostic {
 			seen[key] = true
 		}
 	}
+	validateUseCasePackages(s, add)
+	validateHierarchy(s, add)
+	validateChoices(s, add)
+	for _, id := range model.Keys(s.CommonRules) {
+		rule := s.CommonRules[id]
+		if strings.TrimSpace(rule.Name) == "" || strings.TrimSpace(rule.Description) == "" {
+			add("commonRules/"+id, "common rule name and description are required")
+		}
+	}
 	for _, st := range p.Initial {
 		if _, err := s.Normalize(st); err != nil {
 			add("project", err.Error())
+		} else if s.IsChoice(st.State) {
+			add("project", "initial configuration must be a state, not a choice")
 		}
 	}
 	if len(s.States) == 0 || len(s.UseCases) == 0 {
@@ -298,6 +309,9 @@ func Validate(s *model.Spec) []model.Diagnostic {
 	for _, id := range model.Keys(s.States) {
 		st := s.States[id]
 		sub := "states/" + id
+		if st.LayoutLayer != nil && *st.LayoutLayer < 0 {
+			add(sub, "layoutLayer must be non-negative")
+		}
 		if _, ok := s.Screens[st.Screen]; !ok {
 			add(sub, "unknown screen "+st.Screen)
 		}
@@ -367,28 +381,49 @@ func Validate(s *model.Spec) []model.Diagnostic {
 	for _, id := range model.Keys(s.Transitions) {
 		t := s.Transitions[id]
 		sub := "transitions/" + id
-		st, ok := s.States[t.From]
-		if !ok {
-			add(sub, "unknown from state "+t.From)
+		st := s.States[t.From]
+		if !model.Contains([]string{"", "external", "internal"}, t.Kind) {
+			add(sub, "kind must be empty, external or internal")
 		}
-		if _, ok = s.States[t.To]; !ok {
-			add(sub, "unknown to state "+t.To)
+		if !s.HasVertex(t.From) {
+			add(sub, "unknown from vertex "+t.From)
 		}
-		ev, ok := s.Events[t.Event]
-		if !ok {
-			add(sub, "unknown event "+t.Event)
+		if !s.HasVertex(t.To) {
+			add(sub, "unknown to vertex "+t.To)
 		}
-		if !model.Contains(st.Events, t.Event) {
-			add(sub, "event not declared on source state")
+		if t.Kind == "internal" {
+			if s.IsChoice(t.From) || s.IsChoice(t.To) {
+				add(sub, "internal transitions must use state endpoints")
+			} else if _, fromOK := s.States[t.From]; fromOK {
+				if _, toOK := s.States[t.To]; toOK && t.From != t.To {
+					add(sub, "internal transitions must have the same from and to state")
+				}
+			}
 		}
-		if t.Action == "" {
-			add(sub, "action description required")
+		ev := s.Events[t.Event]
+		if s.IsChoice(t.From) {
+			if t.Event != "" {
+				add(sub, "choice branches must not have an event")
+			}
+			if t.Guard == nil {
+				add(sub, "choice branch requires a guard")
+			}
+			ev = model.Event{}
+		} else {
+			if _, ok := s.Events[t.Event]; !ok {
+				add(sub, "unknown event "+t.Event)
+			}
+			if !model.Contains(st.Events, t.Event) {
+				add(sub, "event not declared on source state")
+			}
 		}
 		if t.Guard != nil {
 			validateExpr(sub, t.Guard, ev.Parameters)
 			if !guardShape(t.Guard) {
 				add(sub, "guards use named conditions with and/or/not; declare atomic predicates in conditions")
 			}
+		} else if t.GuardLabel != "" {
+			add(sub, "guardLabel requires a guard")
 		}
 		for _, k := range model.Keys(t.Set) {
 			x := t.Set[k]
@@ -402,8 +437,16 @@ func Validate(s *model.Spec) []model.Diagnostic {
 		if sc.Name == "" {
 			add(sub, "scenario name required")
 		}
+		if strings.TrimSpace(sc.Goal) == "" {
+			add(sub, "scenario goal required")
+		}
+		if strings.TrimSpace(sc.ExpectedOutcome) == "" {
+			add(sub, "scenario expectedOutcome required")
+		}
 		if _, err := s.Normalize(sc.Start); err != nil {
 			add(sub, err.Error())
+		} else if s.IsChoice(sc.Start.State) {
+			add(sub, "scenario must start in a state, not a choice")
 		}
 		validateExpr(sub, sc.Expect, nil)
 		for _, step := range sc.Steps {
@@ -427,6 +470,8 @@ func Validate(s *model.Spec) []model.Diagnostic {
 		for _, st := range u.Starts {
 			if n, err := s.Normalize(st); err != nil {
 				add(sub, err.Error())
+			} else if s.IsChoice(n.State) {
+				add(sub, "use-case start must be a state, not a choice")
 			} else if b, err := engine.Predicate(s, n, u.End); err != nil {
 				add(sub, err.Error())
 			} else if b {
@@ -451,6 +496,9 @@ func Validate(s *model.Spec) []model.Diagnostic {
 			}
 			checkScenario(sub, u.Scenarios[sid])
 		}
+		for _, message := range validateCoverageReviews(u) {
+			add(sub, message)
+		}
 	}
 	for _, id := range model.Keys(s.Transitions) {
 		if !owned[id] && s.Transitions[id].UnownedReason == "" {
@@ -471,22 +519,27 @@ func Validate(s *model.Spec) []model.Diagnostic {
 	for _, id := range model.Keys(s.Decisions) {
 		v := s.Decisions[id]
 		sub := "decisions/" + id
-		if _, ok := s.States[v.State]; !ok {
-			add(sub, "unknown state")
+		if !s.HasVertex(v.State) {
+			add(sub, "unknown state or choice")
 		}
-		if _, ok := s.Events[v.Event]; !ok {
+		if s.IsChoice(v.State) {
+			if v.Event != "" {
+				add(sub, "choice decision table must not have an event")
+			}
+		} else if _, ok := s.Events[v.Event]; !ok {
 			add(sub, "unknown event")
 		}
 		if len(v.Cases) == 0 {
 			add(sub, "decision cases required")
 		}
 		for _, c := range v.Cases {
-			if _, err := s.Normalize(model.Snapshot{State: v.State, Values: c.Values}); err != nil {
+			n, err := s.Normalize(model.Snapshot{State: v.State, Values: c.Values})
+			if err != nil {
 				add(sub, err.Error())
 			}
 			for _, tr := range c.Enabled {
 				t, ok := s.Transitions[tr]
-				if !ok || t.From != v.State || t.Event != v.Event {
+				if !ok || err != nil || !s.InState(n.State, t.From) || t.Event != v.Event {
 					add(sub, "expected transition does not match table state/event: "+tr)
 				}
 			}
@@ -495,6 +548,149 @@ func Validate(s *model.Spec) []model.Diagnostic {
 	sort.SliceStable(d, func(i, j int) bool { return d[i].Subject+d[i].Message < d[j].Subject+d[j].Message })
 	return d
 }
+
+func validateChoices(s *model.Spec, add func(string, string)) {
+	out := map[string][]string{}
+	for _, transition := range model.Keys(s.Transitions) {
+		t := s.Transitions[transition]
+		if s.IsChoice(t.From) {
+			out[t.From] = append(out[t.From], t.To)
+		}
+	}
+	for _, id := range model.Keys(s.Choices) {
+		choice := s.Choices[id]
+		sub := "choices/" + id
+		if choice.Label == "" {
+			add(sub, "label required")
+		}
+		if _, ok := s.States[id]; ok {
+			add(sub, "choice ID duplicates a state ID")
+		}
+		if choice.Parent != "" {
+			parent, ok := s.States[choice.Parent]
+			if !ok || parent.Initial == "" {
+				add(sub, "choice parent must be a composite state")
+			}
+		}
+		if len(out[id]) == 0 {
+			add(sub, "choice requires an outgoing branch")
+		}
+	}
+	// Eventless choice chains must finish before another event can be accepted.
+	color := map[string]int{}
+	var visit func(string)
+	visit = func(id string) {
+		if color[id] == 1 {
+			add("choices/"+id, "choice branches contain an eventless cycle")
+			return
+		}
+		if color[id] == 2 {
+			return
+		}
+		color[id] = 1
+		for _, target := range out[id] {
+			if s.IsChoice(target) {
+				visit(target)
+			}
+		}
+		color[id] = 2
+	}
+	for _, id := range model.Keys(s.Choices) {
+		visit(id)
+	}
+}
+
+func validateHierarchy(s *model.Spec, add func(string, string)) {
+	children := map[string][]string{}
+	for _, id := range model.Keys(s.States) {
+		st := s.States[id]
+		if st.Parent != "" {
+			children[st.Parent] = append(children[st.Parent], id)
+		}
+	}
+	for _, id := range model.Keys(s.States) {
+		st := s.States[id]
+		sub := "states/" + id
+		if st.Parent != "" {
+			if _, ok := s.States[st.Parent]; !ok {
+				add(sub, "unknown parent state "+st.Parent)
+			} else if st.Parent == id {
+				add(sub, "state cannot be its own parent")
+			}
+		}
+		seen := map[string]bool{}
+		for current := id; current != ""; {
+			if seen[current] {
+				add(sub, "parent hierarchy contains a cycle")
+				break
+			}
+			seen[current] = true
+			ancestor, ok := s.States[current]
+			if !ok {
+				break
+			}
+			current = ancestor.Parent
+		}
+		if len(children[id]) == 0 {
+			if st.Initial != "" {
+				add(sub, "leaf state must not define initial")
+			}
+		} else {
+			if st.Initial == "" {
+				add(sub, "composite state requires an initial direct child")
+			} else if !model.Contains(children[id], st.Initial) {
+				add(sub, "initial state must be a direct child")
+			}
+			if st.Terminal {
+				add(sub, "composite state must not be terminal")
+			}
+		}
+		if st.Initial != "" {
+			if _, ok := s.States[st.Initial]; !ok {
+				add(sub, "unknown initial state "+st.Initial)
+			}
+		}
+	}
+}
+
+func validateUseCasePackages(s *model.Spec, add func(string, string)) {
+	for _, id := range model.Keys(s.UseCasePackages) {
+		pkg := s.UseCasePackages[id]
+		sub := "usecasePackages/" + id
+		if pkg.Name == "" {
+			add(sub, "name required")
+		}
+		if pkg.Parent != "" {
+			if _, ok := s.UseCasePackages[pkg.Parent]; !ok {
+				add(sub, "unknown parent package "+pkg.Parent)
+			} else if pkg.Parent == id {
+				add(sub, "package cannot be its own parent")
+			}
+		}
+		seen := map[string]bool{}
+		for current := id; current != ""; {
+			if seen[current] {
+				add(sub, "package hierarchy contains a cycle")
+				break
+			}
+			seen[current] = true
+			ancestor, ok := s.UseCasePackages[current]
+			if !ok {
+				break
+			}
+			current = ancestor.Parent
+		}
+	}
+	for _, id := range model.Keys(s.UseCases) {
+		pkg := s.UseCases[id].Package
+		if pkg != "" {
+			if _, ok := s.UseCasePackages[pkg]; !ok {
+				add("usecases/"+id, "unknown use-case package "+pkg)
+			}
+		}
+	}
+}
+
 func guardShape(x any) bool {
 	if _, ok := x.(bool); ok {
 		return true

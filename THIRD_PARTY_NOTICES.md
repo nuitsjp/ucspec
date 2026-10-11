@@ -1,6 +1,6 @@
 # Third-party notices
 
-UCSPEC's own MIT license does not replace the licenses of its dependencies.
+ucspec's own MIT license does not replace the licenses of its dependencies.
 No external font files are distributed; the HTML uses fonts provided by the viewer's system.
 
 Direct dependencies are pinned in go.mod:

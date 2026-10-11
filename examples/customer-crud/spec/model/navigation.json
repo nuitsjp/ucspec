@@ -1,0 +1,162 @@
+{
+  "schemaVersion": "1",
+  "events": {
+    "chooseCustomers": {
+      "label": "顧客管理を選択",
+      "source": "user",
+      "parameters": {
+        "discard": [
+          false,
+          true
+        ]
+      }
+    },
+    "chooseSettings": {
+      "label": "設定を選択",
+      "source": "user",
+      "parameters": {
+        "discard": [
+          false,
+          true
+        ]
+      }
+    }
+  },
+  "conditions": {
+    "discardConfirmed": {
+      "eq": [
+        {
+          "param": "discard"
+        },
+        true
+      ]
+    }
+  },
+  "transitions": {
+    "openSettingsFromSearch": {
+      "defaultVisible": false,
+      "from": "search",
+      "to": "notificationSettings",
+      "event": "chooseSettings",
+      "action": "検索を保持し、通知設定を表示",
+      "set": {
+        "notificationDraft": {
+          "var": "notificationEnabled"
+        },
+        "notificationOutcome": "none",
+        "outcome": "none"
+      },
+      "unownedReason": "常設メニューによる機能間の移動。横断回帰シナリオで確認する。"
+    },
+    "openSettingsFromView": {
+      "defaultVisible": false,
+      "from": "view",
+      "to": "notificationSettings",
+      "event": "chooseSettings",
+      "action": "通知設定を表示",
+      "set": {
+        "notificationDraft": {
+          "var": "notificationEnabled"
+        },
+        "notificationOutcome": "none",
+        "outcome": "none"
+      },
+      "unownedReason": "常設メニューによる機能間の移動。横断回帰シナリオで確認する。"
+    },
+    "returnSearchFromCustomerEdit": {
+      "defaultVisible": false,
+      "from": "edit",
+      "to": "search",
+      "event": "chooseCustomers",
+      "guard": {
+        "condition": "discardConfirmed"
+      },
+      "guardLabel": "破棄を承認",
+      "action": "顧客入力を破棄し、検索を復元",
+      "set": {
+        "outcome": "none"
+      },
+      "unownedReason": "編集途中のメニュー移動。破棄確認を横断回帰シナリオで確認する。"
+    },
+    "keepCustomerEditForSearch": {
+      "defaultVisible": false,
+      "from": "edit",
+      "to": "edit",
+      "event": "chooseCustomers",
+      "guard": {
+        "not": {
+          "condition": "discardConfirmed"
+        }
+      },
+      "guardLabel": "破棄を取消",
+      "action": "顧客入力を保持",
+      "unownedReason": "編集途中のメニュー移動。破棄確認を横断回帰シナリオで確認する。"
+    },
+    "openSettingsFromCustomerEdit": {
+      "defaultVisible": false,
+      "from": "edit",
+      "to": "notificationSettings",
+      "event": "chooseSettings",
+      "guard": {
+        "condition": "discardConfirmed"
+      },
+      "guardLabel": "破棄を承認",
+      "action": "顧客入力を破棄し、通知設定を表示",
+      "set": {
+        "notificationDraft": {
+          "var": "notificationEnabled"
+        },
+        "notificationOutcome": "none",
+        "outcome": "none"
+      },
+      "unownedReason": "編集途中のメニュー移動。破棄確認を横断回帰シナリオで確認する。"
+    },
+    "keepCustomerEditForSettings": {
+      "defaultVisible": false,
+      "from": "edit",
+      "to": "edit",
+      "event": "chooseSettings",
+      "guard": {
+        "not": {
+          "condition": "discardConfirmed"
+        }
+      },
+      "guardLabel": "破棄を取消",
+      "action": "顧客入力を保持",
+      "unownedReason": "編集途中のメニュー移動。破棄確認を横断回帰シナリオで確認する。"
+    },
+    "returnSearchFromSettings": {
+      "defaultVisible": false,
+      "from": "notificationSettings",
+      "to": "search",
+      "event": "chooseCustomers",
+      "guard": {
+        "condition": "discardConfirmed"
+      },
+      "guardLabel": "破棄を承認",
+      "action": "通知入力を破棄し、検索を復元",
+      "set": {
+        "notificationDraft": {
+          "var": "notificationEnabled"
+        },
+        "notificationOutcome": "none",
+        "outcome": "none"
+      },
+      "unownedReason": "設定編集中のメニュー移動。破棄確認を横断回帰シナリオで確認する。"
+    },
+    "keepSettingsForSearch": {
+      "defaultVisible": false,
+      "from": "notificationSettings",
+      "to": "notificationSettings",
+      "event": "chooseCustomers",
+      "guard": {
+        "not": {
+          "condition": "discardConfirmed"
+        }
+      },
+      "guardLabel": "破棄を取消",
+      "action": "通知入力を保持",
+      "unownedReason": "設定編集中のメニュー移動。破棄確認を横断回帰シナリオで確認する。"
+    }
+  }
+}

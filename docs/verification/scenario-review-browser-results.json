@@ -1,0 +1,19 @@
+{
+  "passed": true,
+  "checks": [
+    "renderer: use case navigation, SVG, scenario table and path highlighting",
+    "renderer: purpose and expected outcome precede steps; model assertion is separate",
+    "renderer: missing-path candidate navigation",
+    "renderer: no JavaScript or CSP errors",
+    "renderer: grouped coverage reviews, reasons, design requirements and representative scenario navigation",
+    "renderer: changed intent invalidates review annotations while preserving raw coverage",
+    "sample: invalid name rejected",
+    "sample: save failure preserves input; retry succeeds",
+    "sample: delete failure, retry, and no resurrection on search",
+    "sample: reader cannot edit"
+  ],
+  "errors": [],
+  "browser": "155.0.4283.45",
+  "cliVersion": "0.1.11",
+  "method": "UTF-8 bytes passed to setContent with original newlines; not file:// verification"
+}

@@ -3,6 +3,7 @@
   "usecases": {
     "deleteCustomer": {
       "name": "顧客を削除する",
+      "package": "customerManagement",
       "actor": "利用者",
       "goal": "顧客の削除を確認して実行する",
       "starts": [
@@ -38,28 +39,40 @@
             ]
           },
           {
-            "eq": [
+            "and": [
               {
-                "var": "outcome"
+                "eq": [
+                  {
+                    "var": "$state"
+                  },
+                  "search"
+                ]
               },
-              "denied"
+              {
+                "eq": [
+                  {
+                    "var": "outcome"
+                  },
+                  "empty"
+                ]
+              }
             ]
           }
         ]
       },
       "scope": [
         "searchFound",
+        "openCustomer",
         "openView",
-        "openDelete",
-        "denyDelete",
+        "openGone",
         "confirmDelete",
-        "deleteSucceeded",
-        "deleteFailed",
         "cancelDelete"
       ],
       "scenarios": {
         "delete": {
           "name": "削除を確定する",
+          "goal": "不要となった顧客情報を確認して削除する",
+          "expectedOutcome": "削除を確定した対象顧客が管理対象から除かれ、検索未実行の顧客検索画面へ戻る",
           "start": {
             "state": "search",
             "values": {
@@ -71,18 +84,46 @@
               "transition": "searchFound"
             },
             {
+              "transition": "openCustomer",
+              "input": {
+                "exists": true
+              }
+            },
+            {
               "transition": "openView"
             },
             {
-              "transition": "openDelete"
-            },
-            {
-              "transition": "confirmDelete"
-            },
-            {
-              "transition": "deleteSucceeded",
+              "transition": "confirmDelete",
+              "expect": {
+                "and": [
+                  {
+                    "eq": [
+                      {
+                        "var": "$state"
+                      },
+                      "search"
+                    ]
+                  },
+                  {
+                    "eq": [
+                      {
+                        "var": "exists"
+                      },
+                      false
+                    ]
+                  },
+                  {
+                    "eq": [
+                      {
+                        "var": "searched"
+                      },
+                      false
+                    ]
+                  }
+                ]
+              },
               "input": {
-                "success": true
+                "confirmed": true
               }
             }
           ],
@@ -92,6 +133,14 @@
                 "eq": [
                   {
                     "var": "exists"
+                  },
+                  false
+                ]
+              },
+              {
+                "eq": [
+                  {
+                    "var": "searched"
                   },
                   false
                 ]
@@ -117,6 +166,8 @@
         },
         "cancel": {
           "name": "削除を中止する",
+          "goal": "顧客情報の削除を取りやめ、管理対象として残す",
+          "expectedOutcome": "削除は実行されず、顧客閲覧画面で対象顧客の情報が維持される",
           "start": {
             "state": "search",
             "values": {
@@ -128,13 +179,19 @@
               "transition": "searchFound"
             },
             {
+              "transition": "openCustomer",
+              "input": {
+                "exists": true
+              }
+            },
+            {
               "transition": "openView"
             },
             {
-              "transition": "openDelete"
-            },
-            {
-              "transition": "cancelDelete"
+              "transition": "cancelDelete",
+              "input": {
+                "confirmed": false
+              }
             }
           ],
           "expect": {
@@ -158,8 +215,10 @@
             ]
           }
         },
-        "retry": {
-          "name": "削除失敗後に再試行する",
+        "disappeared": {
+          "name": "削除を開始する前に顧客が消失する",
+          "goal": "削除対象が閲覧前に消失したことを確認し、誤った削除を防ぐ",
+          "expectedOutcome": "対象の消失を受けて再検索とアラート表示を行い、顧客情報を更新せず検索画面に留まる",
           "start": {
             "state": "search",
             "values": {
@@ -171,35 +230,93 @@
               "transition": "searchFound"
             },
             {
-              "transition": "openView"
-            },
-            {
-              "transition": "openDelete"
-            },
-            {
-              "transition": "confirmDelete"
-            },
-            {
-              "transition": "deleteFailed",
+              "transition": "openCustomer",
               "input": {
-                "success": false
+                "exists": false
               }
             },
             {
-              "transition": "openDelete"
-            },
-            {
-              "transition": "confirmDelete"
-            },
-            {
-              "transition": "deleteSucceeded",
-              "input": {
-                "success": true
+              "transition": "openGone",
+              "expect": {
+                "and": [
+                  {
+                    "eq": [
+                      {
+                        "var": "$state"
+                      },
+                      "search"
+                    ]
+                  },
+                  {
+                    "eq": [
+                      {
+                        "var": "searched"
+                      },
+                      true
+                    ]
+                  },
+                  {
+                    "eq": [
+                      {
+                        "var": "searchAlert"
+                      },
+                      true
+                    ]
+                  },
+                  {
+                    "eq": [
+                      {
+                        "var": "exists"
+                      },
+                      false
+                    ]
+                  },
+                  {
+                    "eq": [
+                      {
+                        "var": "revision"
+                      },
+                      "original"
+                    ]
+                  },
+                  {
+                    "eq": [
+                      {
+                        "var": "outcome"
+                      },
+                      "empty"
+                    ]
+                  }
+                ]
               }
             }
           ],
           "expect": {
             "and": [
+              {
+                "eq": [
+                  {
+                    "var": "$state"
+                  },
+                  "search"
+                ]
+              },
+              {
+                "eq": [
+                  {
+                    "var": "searched"
+                  },
+                  true
+                ]
+              },
+              {
+                "eq": [
+                  {
+                    "var": "searchAlert"
+                  },
+                  true
+                ]
+              },
               {
                 "eq": [
                   {
@@ -211,41 +328,9 @@
               {
                 "eq": [
                   {
-                    "var": "outcome"
+                    "var": "revision"
                   },
-                  "deleted"
-                ]
-              }
-            ]
-          }
-        },
-        "denied": {
-          "name": "閲覧権限では削除できない",
-          "start": {
-            "state": "search",
-            "values": {
-              "role": "reader"
-            }
-          },
-          "steps": [
-            {
-              "transition": "searchFound"
-            },
-            {
-              "transition": "openView"
-            },
-            {
-              "transition": "denyDelete"
-            }
-          ],
-          "expect": {
-            "and": [
-              {
-                "eq": [
-                  {
-                    "var": "exists"
-                  },
-                  true
+                  "original"
                 ]
               },
               {
@@ -253,7 +338,7 @@
                   {
                     "var": "outcome"
                   },
-                  "denied"
+                  "empty"
                 ]
               }
             ]

@@ -10,7 +10,7 @@ GitHubの接続先が異なる場合はRepositoryを変更します。更新元�
 
 ```powershell
 gh auth login
-.\scripts\publish-github.ps1 -Repository nuitsjp/usecase-spec
+.\scripts\publish-github.ps1 -Repository nuitsjp/ucspec
 ```
 
 既定はprivateです。公開する場合だけ `-Visibility public` を指定します。既存リポジトリ、既存originには書き込みません。認証トークンはソースに保存しません。
@@ -20,7 +20,7 @@ gh auth login
 ## バージョンを公開する
 
 ```powershell
-.\scripts\build.ps1 -Version 0.1.0 -Repository nuitsjp/usecase-spec
+.\scripts\build.ps1 -Version 0.1.0 -Repository nuitsjp/ucspec
 git add go.mod go.sum
 # 変更がある場合は理由と共にコミットする
 git tag v0.1.0

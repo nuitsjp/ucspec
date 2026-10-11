@@ -2,8 +2,8 @@ package analysis
 
 import (
 	"fmt"
-	"github.com/nuitsjp/usecase-spec/internal/engine"
-	"github.com/nuitsjp/usecase-spec/internal/model"
+	"github.com/nuitsjp/ucspec/internal/engine"
+	"github.com/nuitsjp/ucspec/internal/model"
 )
 
 type Node struct {
@@ -26,6 +26,17 @@ type Graph struct {
 	Diagnostics  []model.Diagnostic
 }
 
+// transitionTargets returns the stable control states reached by a transition.
+// External transitions enter a composite target through its initial child;
+// internal transitions preserve each currently active leaf of their source.
+func transitionTargets(s *model.Spec, t model.Transition) []string {
+	if t.Kind == "internal" {
+		return s.Leaves(t.From)
+	}
+	to, _ := s.Enter(t.To)
+	return []string{to}
+}
+
 func Explore(e *engine.Engine, starts []model.Snapshot, scope map[string]bool, end model.Expr) *Graph {
 	g := &Graph{Out: map[int][]int{}, Complete: true}
 	ids := map[string]int{}
@@ -41,7 +52,7 @@ func Explore(e *engine.Engine, starts []model.Snapshot, scope map[string]bool, e
 		}
 		id := len(g.Nodes)
 		term := e.Spec.States[st.State].Terminal
-		if end != nil {
+		if end != nil && !e.Spec.IsChoice(st.State) {
 			b, err := engine.Predicate(e.Spec, st, end)
 			if err != nil {
 				g.Diagnostics = append(g.Diagnostics, model.Diagnostic{Code: "end-expression", Severity: "error", Message: err.Error(), Witness: &w})
@@ -61,6 +72,11 @@ func Explore(e *engine.Engine, starts []model.Snapshot, scope map[string]bool, e
 			g.Diagnostics = append(g.Diagnostics, model.Diagnostic{Code: "initial", Severity: "error", Message: err.Error()})
 			continue
 		}
+		if e.Spec.IsChoice(n.State) {
+			g.Complete = false
+			g.Diagnostics = append(g.Diagnostics, model.Diagnostic{Code: "initial", Severity: "error", Message: "exploration must start in a state, not a choice"})
+			continue
+		}
 		id, _ := add(n, model.Witness{Start: n, Steps: []model.Step{}})
 		if id >= 0 && !containsInt(g.Starts, id) {
 			g.Starts = append(g.Starts, id)
@@ -73,8 +89,7 @@ exploration:
 		if n.Terminal {
 			continue
 		}
-		st := e.Spec.States[n.State.State]
-		for _, evID := range sortedStrings(st.Events) {
+		for _, evID := range e.Events(n.State.State) {
 			inputs, err := e.Inputs(evID)
 			if err != nil {
 				g.Complete = false

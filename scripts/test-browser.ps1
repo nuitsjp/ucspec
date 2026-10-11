@@ -1,5 +1,5 @@
 param(
-    [string]$Report = 'examples/customer-crud/artifacts/usecase-spec/index.html',
+    [string]$Report = 'examples/customer-crud/artifacts/ucspec/index.html',
     [string]$Output = 'validation/browser'
 )
 $ErrorActionPreference = 'Stop'
@@ -12,13 +12,59 @@ $Report = (Resolve-Path -LiteralPath $Report).Path
 New-Item -ItemType Directory -Force -Path $Output | Out-Null
 $utf8 = [Text.UTF8Encoding]::new($false)
 # Read bytes directly: newline normalization would hide CSP hash failures.
-$inputs = @{
-    report = $utf8.GetString([IO.File]::ReadAllBytes($Report))
-    sample = $utf8.GetString([IO.File]::ReadAllBytes((Join-Path $root 'examples/customer-crud/app/index.html')))
-} | ConvertTo-Json -Compress
-$code = [IO.File]::ReadAllText((Join-Path $PSScriptRoot 'browser-smoke.js'), $utf8).Replace('__INPUTS__', $inputs)
 $work = Join-Path ([IO.Path]::GetTempPath()) ('ucspec-browser-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $work | Out-Null
+# Build isolated review fixtures through the production CLI and real layout adapter.
+$exe = Join-Path $root 'dist/ucspec.exe'
+if (-not (Test-Path -LiteralPath $exe)) { throw 'Run scripts/build.ps1 before the browser test.' }
+$fixture = Join-Path $work 'review-product'
+New-Item -ItemType Directory -Path $fixture | Out-Null
+Copy-Item -LiteralPath (Join-Path $root 'examples/customer-crud/spec') -Destination $fixture -Recurse
+$project = Join-Path $fixture 'spec/project.json'
+& $exe build --project $project | Out-Null
+if ($LASTEXITCODE -ne 0) { throw 'Review fixture baseline failed.' }
+$fixtureOutput = Join-Path $fixture 'artifacts/ucspec'
+$baseline = [IO.File]::ReadAllText((Join-Path $fixtureOutput 'report.json'), $utf8) | ConvertFrom-Json
+$usecase = $baseline.usecases | Where-Object id -eq 'editCustomer'
+$missing = @(($usecase.coverage | Where-Object kind -eq 'boundedPaths').missing)
+if ($missing.Count -lt 5) { throw 'Review fixture requires at least five missing paths.' }
+$source = Join-Path $fixture 'spec/usecases/editCustomer.json'
+$document = [IO.File]::ReadAllText($source, $utf8) | ConvertFrom-Json
+$reviews = [ordered]@{}
+foreach ($status in @('addScenario','represented','forbidden')) {
+    $index = $reviews.Count
+    $review = [ordered]@{
+        kind = 'boundedPaths'
+        requirements = @($missing[$index].id)
+        status = $status
+        reason = "Browser fixture: $status <script>window.injected=true</script>"
+        basisHash = $usecase.reviewBasisHash
+    }
+    if ($status -eq 'represented') {
+        $review.scenario = 'update'
+        $review.architectureRequirements = @('The represented paths must preserve the same user outcome; fixture requirement, not an implementation guarantee.')
+        $review.requirements += $missing[3].id
+    }
+    $reviews[$status] = $review
+}
+$document.usecases.editCustomer | Add-Member -NotePropertyName coverageReviews -NotePropertyValue $reviews -Force
+[IO.File]::WriteAllText($source, ($document | ConvertTo-Json -Depth 100), $utf8)
+& $exe build --project $project | Out-Null
+if ($LASTEXITCODE -ne 0) { throw 'Review fixture build failed.' }
+$reviewHTML = $utf8.GetString([IO.File]::ReadAllBytes((Join-Path $fixtureOutput 'index.html')))
+# Change intent while preserving paths: historical judgments must become stale.
+$document.usecases.editCustomer.scenarios.update.goal += ' (changed review context)'
+[IO.File]::WriteAllText($source, ($document | ConvertTo-Json -Depth 100), $utf8)
+& $exe build --project $project | Out-Null
+if ($LASTEXITCODE -ne 0) { throw 'Stale review fixture build failed.' }
+$inputs = @{
+    output = $Output.Replace("\", "/")
+    report = $utf8.GetString([IO.File]::ReadAllBytes($Report))
+    sample = $utf8.GetString([IO.File]::ReadAllBytes((Join-Path $root 'examples/customer-crud/app/index.html')))
+    reviews = $reviewHTML
+    stale = $utf8.GetString([IO.File]::ReadAllBytes((Join-Path $fixtureOutput 'index.html')))
+} | ConvertTo-Json -Compress
+$code = [IO.File]::ReadAllText((Join-Path $PSScriptRoot 'browser-smoke.js'), $utf8).Replace('__INPUTS__', $inputs)
 [IO.File]::WriteAllText((Join-Path $work 'smoke.js'), $code, $utf8)
 $session = 'ucspec-' + [guid]::NewGuid().ToString('N')
 $result = [pscustomobject]@{ passed = $false; checks = @(); errors = @() }

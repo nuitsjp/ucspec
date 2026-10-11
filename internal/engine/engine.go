@@ -2,7 +2,7 @@ package engine
 
 import (
 	"fmt"
-	"github.com/nuitsjp/usecase-spec/internal/model"
+	"github.com/nuitsjp/ucspec/internal/model"
 )
 
 type Engine struct {
@@ -18,7 +18,27 @@ func New(s *model.Spec) *Engine {
 	}
 	return e
 }
+
+func (e *Engine) Events(state string) []string {
+	if e.Spec.IsChoice(state) {
+		// The empty trigger is an automatic branch, never an external event.
+		return []string{""}
+	}
+	if e.Spec.States[state].Terminal {
+		return []string{}
+	}
+	events := map[string]bool{}
+	for _, id := range e.Spec.StatePath(state) {
+		for _, event := range e.Spec.States[id].Events {
+			events[event] = true
+		}
+	}
+	return model.Keys(events)
+}
 func (e *Engine) Inputs(event string) ([]map[string]any, error) {
+	if event == "" {
+		return []map[string]any{{}}, nil
+	}
 	ev, ok := e.Spec.Events[event]
 	if !ok {
 		return nil, fmt.Errorf("unknown event %s", event)
@@ -65,10 +85,16 @@ func (e *Engine) ValidateInput(event string, in map[string]any) error {
 	return nil
 }
 func (e *Engine) Select(st model.Snapshot, event string, in map[string]any) ([]string, []model.Observation, bool, error) {
-	if err := e.ValidateInput(event, in); err != nil {
-		return nil, nil, false, err
+	if event == "" && e.Spec.IsChoice(st.State) {
+		if len(in) != 0 {
+			return nil, nil, false, fmt.Errorf("choice branches do not accept event input")
+		}
+	} else {
+		if err := e.ValidateInput(event, in); err != nil {
+			return nil, nil, false, err
+		}
 	}
-	if !model.Contains(e.Spec.States[st.State].Events, event) {
+	if !model.Contains(e.Events(st.State), event) {
 		return nil, nil, false, nil
 	}
 	ev := e.Spec.Events[event]
@@ -84,23 +110,34 @@ func (e *Engine) Select(st model.Snapshot, event string, in map[string]any) ([]s
 	}
 	ids := []string{}
 	obs := []model.Observation{}
-	for _, id := range e.Out[st.State] {
-		t := e.Spec.Transitions[id]
-		if t.Event != event {
-			continue
+	sources := e.Spec.StatePath(st.State)
+	if e.Spec.IsChoice(st.State) {
+		sources = []string{st.State}
+	}
+	for _, source := range sources {
+		for _, id := range e.Out[source] {
+			t := e.Spec.Transitions[id]
+			if t.Event != event {
+				continue
+			}
+			eval.Atoms = map[string]bool{}
+			b := true
+			var err error
+			if t.Guard != nil {
+				b, err = eval.Bool(t.Guard)
+			}
+			if err != nil {
+				return nil, nil, true, fmt.Errorf("guard %s: %w", id, err)
+			}
+			obs = append(obs, model.Observation{Transition: id, Atoms: eval.Atoms, Guard: b})
+			if b {
+				ids = append(ids, id)
+			}
 		}
-		eval.Atoms = map[string]bool{}
-		b := true
-		var err error
-		if t.Guard != nil {
-			b, err = eval.Bool(t.Guard)
-		}
-		if err != nil {
-			return nil, nil, true, fmt.Errorf("guard %s: %w", id, err)
-		}
-		obs = append(obs, model.Observation{Transition: id, Atoms: eval.Atoms, Guard: b})
-		if b {
-			ids = append(ids, id)
+		// The most deeply nested enabled source wins. Conflicts at that
+		// source are still returned for the event-partition check.
+		if len(ids) > 0 {
+			break
 		}
 	}
 	return ids, obs, true, nil
@@ -110,7 +147,7 @@ func (e *Engine) Apply(st model.Snapshot, id string, in map[string]any) (model.S
 	if !ok {
 		return st, nil, fmt.Errorf("unknown transition %s", id)
 	}
-	if t.From != st.State {
+	if !e.Spec.InState(st.State, t.From) {
 		return st, nil, fmt.Errorf("%s starts at %s, not %s", id, t.From, st.State)
 	}
 	ids, obs, _, err := e.Select(st, t.Event, in)
@@ -121,7 +158,17 @@ func (e *Engine) Apply(st model.Snapshot, id string, in map[string]any) (model.S
 		return st, obs, fmt.Errorf("%s not uniquely enabled (enabled=%v)", id, ids)
 	}
 	next := model.CloneSnapshot(st)
-	next.State = t.To
+	if t.Kind == "internal" {
+		// Internal transitions keep the active configuration. In particular, a
+		// transition declared on a composite state must not re-enter its initial
+		// child.
+		next.State = st.State
+	} else {
+		next.State, err = e.Spec.Enter(t.To)
+		if err != nil {
+			return st, obs, err
+		}
+	}
 	eval := Evaluation{Spec: e.Spec, State: st, Input: in}
 	// All assignments read the PRE-state (simultaneous assignment semantics).
 	for _, k := range model.Keys(t.Set) {
@@ -138,10 +185,14 @@ func (e *Engine) Apply(st model.Snapshot, id string, in map[string]any) (model.S
 	return next, obs, nil
 }
 func (e *Engine) Replay(id string, sc model.Scenario, uc *model.UseCase) model.ScenarioResult {
-	r := model.ScenarioResult{ID: id, Name: sc.Name, Expect: sc.Expect, Witness: model.Witness{Start: sc.Start, Steps: sc.Steps}, Trace: []model.Snapshot{}}
+	r := model.ScenarioResult{ID: id, Name: sc.Name, Goal: sc.Goal, ExpectedOutcome: sc.ExpectedOutcome, Expect: sc.Expect, Witness: model.Witness{Start: sc.Start, Steps: sc.Steps}, Trace: []model.Snapshot{}}
 	st, err := e.Spec.Normalize(sc.Start)
 	if err != nil {
 		r.Error = err.Error()
+		return r
+	}
+	if e.Spec.IsChoice(st.State) {
+		r.Error = "scenario must start in a state, not a choice"
 		return r
 	}
 	r.Witness.Start = st
@@ -161,14 +212,16 @@ func (e *Engine) Replay(id string, sc model.Scenario, uc *model.UseCase) model.S
 	}
 	for i, step := range sc.Steps {
 		if uc != nil {
-			b, er := Predicate(e.Spec, st, uc.End)
-			if er != nil {
-				r.Error = er.Error()
-				return r
-			}
-			if b {
-				r.Error = fmt.Sprintf("step %d continues past use-case end", i+1)
-				return r
+			if !e.Spec.IsChoice(st.State) {
+				b, er := Predicate(e.Spec, st, uc.End)
+				if er != nil {
+					r.Error = er.Error()
+					return r
+				}
+				if b {
+					r.Error = fmt.Sprintf("step %d continues past use-case end", i+1)
+					return r
+				}
 			}
 			if !model.Contains(uc.Scope, step.Transition) {
 				r.Error = "transition outside use-case scope: " + step.Transition
@@ -180,8 +233,12 @@ func (e *Engine) Replay(id string, sc model.Scenario, uc *model.UseCase) model.S
 			}
 		}
 		if step.Reject {
+			if e.Spec.IsChoice(st.State) {
+				r.Error = "choice must resolve before another event or rejection assertion"
+				return r
+			}
 			t, ok := e.Spec.Transitions[step.Transition]
-			if !ok || t.From != st.State {
+			if !ok || !e.Spec.InState(st.State, t.From) {
 				r.Error = "rejection must target a transition from current state"
 				return r
 			}
@@ -211,6 +268,10 @@ func (e *Engine) Replay(id string, sc model.Scenario, uc *model.UseCase) model.S
 				return r
 			}
 		}
+	}
+	if e.Spec.IsChoice(st.State) {
+		r.Error = "scenario ends at an unresolved choice"
+		return r
 	}
 	if uc != nil {
 		b, er := Predicate(e.Spec, st, uc.End)

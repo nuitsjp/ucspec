@@ -6,11 +6,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/nuitsjp/usecase-spec/internal/assets"
-	"github.com/nuitsjp/usecase-spec/internal/compiler"
-	"github.com/nuitsjp/usecase-spec/internal/model"
-	"github.com/nuitsjp/usecase-spec/internal/project"
-	"github.com/nuitsjp/usecase-spec/internal/testkit"
+	"github.com/nuitsjp/ucspec/internal/assets"
+	"github.com/nuitsjp/ucspec/internal/compiler"
+	"github.com/nuitsjp/ucspec/internal/model"
+	"github.com/nuitsjp/ucspec/internal/project"
+	"github.com/nuitsjp/ucspec/internal/testkit"
 	"os"
 	"path/filepath"
 	"strings"
@@ -18,7 +18,7 @@ import (
 )
 
 func dependencies() Dependencies {
-	return Dependencies{Codec: compiler.JSONCodec(), Layout: testkit.FixtureLayout, Assets: assets.Files, Version: "0.1.0", Repository: "nuitsjp/usecase-spec"}
+	return Dependencies{Codec: compiler.JSONCodec(), Layout: testkit.FixtureLayout, Assets: assets.Files, Version: "0.1.0", Repository: "nuitsjp/ucspec"}
 }
 func run(t *testing.T, d Dependencies, args ...string) (int, string) {
 	t.Helper()
@@ -29,7 +29,7 @@ func run(t *testing.T, d Dependencies, args ...string) (int, string) {
 func initialized(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
-	_, e := project.Init(assets.Files, project.Options{Root: root, Name: "CLI Test", Version: "0.1.0", Repository: "nuitsjp/usecase-spec"})
+	_, e := project.Init(assets.Files, project.Options{Root: root, Name: "CLI Test", Version: "0.1.0", Repository: "nuitsjp/ucspec"})
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -55,7 +55,7 @@ func TestCheckBuildAndPin(t *testing.T) {
 			t.Fatal(code, out)
 		}
 	}
-	dir := filepath.Join(root, "artifacts/usecase-spec")
+	dir := filepath.Join(root, "artifacts/ucspec")
 	for _, f := range []string{"index.html", "report.json"} {
 		if _, e := os.Stat(filepath.Join(dir, f)); e != nil {
 			t.Fatal(e)
@@ -82,7 +82,7 @@ func TestBadInputAndLayoutCannotLeaveSuccessfulHTML(t *testing.T) {
 	if code != 2 {
 		t.Fatal(code, out)
 	}
-	b, _ := os.ReadFile(filepath.Join(root, "artifacts/usecase-spec/index.html"))
+	b, _ := os.ReadFile(filepath.Join(root, "artifacts/ucspec/index.html"))
 	if !strings.Contains(string(b), "ELK FAIL") {
 		t.Fatal("stale HTML retained")
 	}
@@ -145,7 +145,7 @@ func TestSourceLoadFailureReplacesConfiguredOutput(t *testing.T) {
 			if !bytes.Contains(b, []byte("仕様書生成に失敗しました")) {
 				t.Error("stale successful HTML retained")
 			}
-			if _, err = os.Stat(filepath.Join(root, "artifacts/usecase-spec")); !os.IsNotExist(err) {
+			if _, err = os.Stat(filepath.Join(root, "artifacts/ucspec")); !os.IsNotExist(err) {
 				t.Errorf("failure output redirected to default directory: %v", err)
 			}
 		})
@@ -169,7 +169,8 @@ func TestCoverageFailureExitCode(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
-	cfg.Coverage["primePaths"] = 100
+	// Repeated searches still leave transition pairs uncovered in the sample.
+	cfg.Coverage["pairs"] = 100
 	os.WriteFile(p, []byte(model.JSON(cfg)), 0600)
 	if code, out := run(t, dependencies(), "check", "--project", p); code != 1 {
 		t.Fatal(code, out)
@@ -181,7 +182,7 @@ func TestBaselineProducesImpact(t *testing.T) {
 	if code, out := run(t, dependencies(), "check", "--project", p); code != 0 {
 		t.Fatal(out)
 	}
-	report := filepath.Join(root, "artifacts/usecase-spec/report.json")
+	report := filepath.Join(root, "artifacts/ucspec/report.json")
 	b, _ := os.ReadFile(report)
 	baseline := filepath.Join(root, "before.json")
 	os.WriteFile(baseline, b, 0600)

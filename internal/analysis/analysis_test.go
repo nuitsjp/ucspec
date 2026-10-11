@@ -1,9 +1,10 @@
 package analysis
 
 import (
-	"github.com/nuitsjp/usecase-spec/internal/engine"
-	"github.com/nuitsjp/usecase-spec/internal/model"
-	"github.com/nuitsjp/usecase-spec/internal/testkit"
+	"github.com/nuitsjp/ucspec/internal/engine"
+	"github.com/nuitsjp/ucspec/internal/model"
+	"github.com/nuitsjp/ucspec/internal/testkit"
+	"strings"
 	"testing"
 )
 
@@ -12,6 +13,8 @@ func TestPrimePathsLongSeparatedChoices(t *testing.T) {
 	scope := map[string]bool{}
 	edges := [][3]string{{"a", "s", "a"}, {"b", "s", "b"}, {"am", "a", "m"}, {"bm", "b", "m"}, {"mn", "m", "n"}, {"x", "n", "x"}, {"y", "n", "y"}, {"xe", "x", "e"}, {"ye", "y", "e"}}
 	for _, ed := range edges {
+		s.States[ed[1]] = model.State{}
+		s.States[ed[2]] = model.State{}
 		s.Transitions[ed[0]] = model.Transition{From: ed[1], To: ed[2]}
 		scope[ed[0]] = true
 	}
@@ -57,6 +60,9 @@ func TestPrimePathsLongSeparatedChoices(t *testing.T) {
 }
 func TestPrimeCyclesAndBudget(t *testing.T) {
 	s := &model.Spec{Document: model.EmptyDocument()}
+	for _, id := range []string{"a", "b", "c"} {
+		s.States[id] = model.State{}
+	}
 	s.Transitions["ab"] = model.Transition{From: "a", To: "b"}
 	s.Transitions["ba"] = model.Transition{From: "b", To: "a"}
 	s.Transitions["cc"] = model.Transition{From: "c", To: "c"}
@@ -77,16 +83,33 @@ func TestSampleCoverageDenominators(t *testing.T) {
 			for _, c := range u.Coverage {
 				switch c.Kind {
 				case "transitions":
-					if c.Covered != 9 || c.Total != 9 {
+					// Seven transitions remain after removing the permission-denial edge.
+					if c.Covered != 7 || c.Total != 7 {
 						t.Fatal(c)
 					}
 				case "primePaths":
-					if c.Covered != 7 || c.Total != 8 {
+					// The permission-denial path is no longer part of the use-case scope.
+					if c.Covered != 5 || c.Total != 5 {
 						t.Fatal(c)
 					}
 				case "boundedPaths":
-					if c.Covered != 5 || c.Total != 20 {
+					// The unchanged eight-step bound yields fourteen finite paths;
+					// permission rejection is checked independently as a regression.
+					if c.Covered != 3 || c.Total != 14 {
 						t.Fatal(c)
+					}
+				case "pairs":
+					if c.Covered != 6 || c.Total != 7 {
+						t.Fatal(c)
+					}
+					found := false
+					for _, missing := range c.Missing {
+						if model.JSON(missing.Path) == model.JSON([]string{"searchFound", "searchFound"}) {
+							found = true
+						}
+					}
+					if !found {
+						t.Fatal("repeated search pair must remain uncovered")
 					}
 				}
 			}
@@ -101,12 +124,103 @@ func TestDeterminism(t *testing.T) {
 		t.Fatal("nondeterministic report")
 	}
 }
+
+// The review basis deliberately includes presentation metadata; finite results do not.
+func useCasesWithoutReviewBasis(results []model.UseCaseResult) []model.UseCaseResult {
+	copy := append([]model.UseCaseResult{}, results...)
+	for i := range copy {
+		copy[i].ReviewBasisHash = ""
+	}
+	return copy
+}
+
+func TestTransitionDefaultVisibleDoesNotAffectAnalysis(t *testing.T) {
+	baseline := Analyze(testkit.Sample(t), "test")
+	for _, visible := range []bool{false, true} {
+		s := testkit.Sample(t)
+		for id, transition := range s.Transitions {
+			transition.DefaultVisible = visible
+			s.Transitions[id] = transition
+		}
+		got := Analyze(s, "test")
+		if baseline.Status != got.Status {
+			t.Fatalf("defaultVisible=%v changed Status: %q != %q", visible, baseline.Status, got.Status)
+		}
+		if baseline.Complete != got.Complete {
+			t.Fatalf("defaultVisible=%v changed Complete: %v != %v", visible, baseline.Complete, got.Complete)
+		}
+		if baseline.ReachableStates != got.ReachableStates {
+			t.Fatalf("defaultVisible=%v changed ReachableStates: %d != %d", visible, baseline.ReachableStates, got.ReachableStates)
+		}
+		for _, fields := range []struct {
+			name string
+			want any
+			got  any
+		}{
+			{name: "Diagnostics", want: baseline.Diagnostics, got: got.Diagnostics},
+			{name: "Checks", want: baseline.Checks, got: got.Checks},
+			{name: "Scenarios", want: baseline.Scenarios, got: got.Scenarios},
+			{name: "UseCases", want: useCasesWithoutReviewBasis(baseline.UseCases), got: useCasesWithoutReviewBasis(got.UseCases)},
+		} {
+			if model.JSON(fields.want) != model.JSON(fields.got) {
+				t.Fatalf("defaultVisible=%v changed %s", visible, fields.name)
+			}
+		}
+	}
+}
+
+func TestStateLayoutLayerDoesNotAffectAnalysis(t *testing.T) {
+	baseline := Analyze(testkit.Sample(t), "test")
+	for _, layer := range []int{0, 7} {
+		s := testkit.Sample(t)
+		for id := range s.States {
+			value := layer
+			state := s.States[id]
+			state.LayoutLayer = &value
+			s.States[id] = state
+		}
+		got := Analyze(s, "test")
+		if baseline.Status != got.Status {
+			t.Fatalf("layoutLayer=%d changed Status: %q != %q", layer, baseline.Status, got.Status)
+		}
+		if baseline.Complete != got.Complete {
+			t.Fatalf("layoutLayer=%d changed Complete: %v != %v", layer, baseline.Complete, got.Complete)
+		}
+		if baseline.ReachableStates != got.ReachableStates {
+			t.Fatalf("layoutLayer=%d changed ReachableStates: %d != %d", layer, baseline.ReachableStates, got.ReachableStates)
+		}
+		for _, fields := range []struct {
+			name string
+			want any
+			got  any
+		}{
+			{name: "Diagnostics", want: baseline.Diagnostics, got: got.Diagnostics},
+			{name: "Checks", want: baseline.Checks, got: got.Checks},
+			{name: "Scenarios", want: baseline.Scenarios, got: got.Scenarios},
+			{name: "UseCases", want: useCasesWithoutReviewBasis(baseline.UseCases), got: useCasesWithoutReviewBasis(got.UseCases)},
+		} {
+			if model.JSON(fields.want) != model.JSON(fields.got) {
+				t.Fatalf("layoutLayer=%d changed %s", layer, fields.name)
+			}
+		}
+	}
+}
 func TestThresholdFailure(t *testing.T) {
 	s := testkit.Sample(t)
-	s.Project.Coverage["primePaths"] = 100
-	if Analyze(s, "test").Status != "failed" {
+	u := s.UseCases["viewCustomer"]
+	delete(u.Scenarios, "disappeared")
+	s.UseCases["viewCustomer"] = u
+	s.Project.Coverage = map[string]float64{"primePaths": 100}
+	r := Analyze(s, "test")
+	if r.Status != "failed" {
 		t.Fatal("uncovered prime paths passed")
 	}
+	for _, d := range r.Diagnostics {
+		if d.Code == "coverage-threshold" && strings.Contains(d.Message, "primePaths") {
+			return
+		}
+	}
+	t.Fatal("primePaths threshold diagnostic missing")
 }
 func TestIncompleteIsNotPass(t *testing.T) {
 	s := testkit.Sample(t)
@@ -146,14 +260,7 @@ func TestMissingEventBranch(t *testing.T) {
 }
 func TestOverlappingGuards(t *testing.T) {
 	s := testkit.Sample(t)
-	var original model.Transition
-	for _, tr := range s.Transitions {
-		if tr.From == "search" {
-			original = tr
-			break
-		}
-	}
-	s.Transitions["duplicate"] = original
+	s.Transitions["duplicate"] = s.Transitions["searchFound"]
 	g := Explore(engine.New(s), s.Project.Initial, nil, nil)
 	if len(g.Diagnostics) == 0 {
 		t.Fatal("overlap not found")
@@ -263,8 +370,8 @@ func convergingStartsSpec() *model.Spec {
 	s.UseCases["flow"] = model.UseCase{
 		Name: "flow", Goal: "complete", Actor: "actor", Starts: s.Project.Initial, End: end,
 		Scope: []string{"ta", "tb", "finish"}, Scenarios: map[string]model.Scenario{
-			"fromA": {Name: "from a", Start: model.Snapshot{State: "a"}, Steps: []model.Step{{Transition: "ta"}}, Expect: end},
-			"fromB": {Name: "from b", Start: model.Snapshot{State: "b"}, Steps: []model.Step{{Transition: "tb"}, {Transition: "finish", Input: map[string]any{"confirmed": true}}}, Expect: end},
+			"fromA": {Name: "from a", Goal: "complete from a", ExpectedOutcome: "reach end directly", Start: model.Snapshot{State: "a"}, Steps: []model.Step{{Transition: "ta"}}, Expect: end},
+			"fromB": {Name: "from b", Goal: "complete from b", ExpectedOutcome: "reach end after confirmation", Start: model.Snapshot{State: "b"}, Steps: []model.Step{{Transition: "tb"}, {Transition: "finish", Input: map[string]any{"confirmed": true}}}, Expect: end},
 		},
 	}
 	return s
@@ -370,7 +477,7 @@ func TestCompletionWitnessesStartAtCheckedConfiguration(t *testing.T) {
 			if !model.Equal(c.Witness.Start, want.Start) || !model.Equal(c.Witness.Steps, want.Steps) {
 				t.Fatalf("completion witness = %s; want start=%s steps=%s", model.JSON(c.Witness), model.JSON(want.Start), model.JSON(want.Steps))
 			}
-			sc := model.Scenario{Name: id, Start: c.Witness.Start, Steps: c.Witness.Steps, Expect: u.End}
+			sc := model.Scenario{Name: id, Goal: want.Goal, ExpectedOutcome: want.ExpectedOutcome, Start: c.Witness.Start, Steps: c.Witness.Steps, Expect: u.End}
 			if replay := engine.New(s).Replay(id, sc, &u); !replay.Valid {
 				t.Fatalf("completion witness cannot be replayed: %s", replay.Error)
 			}

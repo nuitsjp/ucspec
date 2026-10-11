@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://ucspec.invalid/spec.schema.json",
-  "title": "UCSPEC structured specification v1",
+  "title": "ucspec structured specification v1",
   "$defs": {
     "expr": {
       "oneOf": [
@@ -48,6 +48,19 @@
           },
           "required": [
             "condition"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "inState": {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+            }
+          },
+          "required": [
+            "inState"
           ],
           "additionalProperties": false
         },
@@ -390,6 +403,18 @@
         },
         "terminal": {
           "type": "boolean"
+        },
+        "parent": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+        },
+        "initial": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+        },
+        "layoutLayer": {
+          "type": "integer",
+          "minimum": 0
         }
       },
       "required": [
@@ -453,6 +478,12 @@
           "type": "string",
           "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
         },
+        "kind": {
+          "enum": [
+            "external",
+            "internal"
+          ]
+        },
         "event": {
           "type": "string",
           "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
@@ -461,8 +492,7 @@
           "$ref": "#/$defs/guard"
         },
         "action": {
-          "type": "string",
-          "minLength": 1
+          "type": "string"
         },
         "set": {
           "type": "object",
@@ -477,12 +507,18 @@
         "unownedReason": {
           "type": "string",
           "minLength": 1
+        },
+        "guardLabel": {
+          "type": "string",
+          "minLength": 1
+        },
+        "defaultVisible": {
+          "type": "boolean"
         }
       },
       "required": [
         "from",
         "to",
-        "event",
         "action"
       ],
       "additionalProperties": false
@@ -530,6 +566,14 @@
           "type": "string",
           "minLength": 1
         },
+        "goal": {
+          "type": "string",
+          "pattern": "\\S"
+        },
+        "expectedOutcome": {
+          "type": "string",
+          "pattern": "\\S"
+        },
         "description": {
           "type": "string"
         },
@@ -549,9 +593,56 @@
       },
       "required": [
         "name",
+        "goal",
+        "expectedOutcome",
         "start",
         "steps",
         "expect"
+      ],
+      "additionalProperties": false
+    },
+    "coverageReview": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": ["states", "compositeStates", "transitions", "pairs", "primePaths", "boundedPaths", "conditions", "multipleConditions"]
+        },
+        "requirements": {
+          "type": "array",
+          "items": {"type": "string", "pattern": "\\S"},
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "status": {
+          "enum": ["addScenario", "represented", "forbidden"]
+        },
+        "reason": {"type": "string", "pattern": "\\S"},
+        "scenario": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"},
+        "architectureRequirements": {
+          "type": "array",
+          "items": {"type": "string", "pattern": "\\S"}
+        },
+        "basisHash": {"type": "string", "pattern": "\\S"}
+      },
+      "required": ["kind", "requirements", "status", "reason", "basisHash"],
+      "additionalProperties": false,
+      "if": {"properties": {"status": {"const": "represented"}}},
+      "then": {"required": ["scenario"]}
+    },
+    "usecasePackage": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "parent": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+        }
+      },
+      "required": [
+        "name"
       ],
       "additionalProperties": false
     },
@@ -569,6 +660,10 @@
         "actor": {
           "type": "string",
           "minLength": 1
+        },
+        "package": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
         },
         "starts": {
           "type": "array",
@@ -597,6 +692,16 @@
           },
           "additionalProperties": {
             "$ref": "#/$defs/scenario"
+          }
+        },
+        "coverageReviews": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/coverageReview"
           }
         }
       },
@@ -703,7 +808,6 @@
       },
       "required": [
         "state",
-        "event",
         "cases"
       ],
       "additionalProperties": false
@@ -774,6 +878,16 @@
             "$ref": "#/$defs/transition"
           }
         },
+        "usecasePackages": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/usecasePackage"
+          }
+        },
         "usecases": {
           "type": "object",
           "propertyNames": {
@@ -812,6 +926,26 @@
           },
           "additionalProperties": {
             "$ref": "#/$defs/scenario"
+          }
+        },
+        "choices": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/choice"
+          },
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+          }
+        },
+        "commonRules": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/commonRule"
           }
         }
       },
@@ -852,6 +986,11 @@
         },
         {
           "required": [
+            "usecasePackages"
+          ]
+        },
+        {
+          "required": [
             "usecases"
           ]
         },
@@ -868,6 +1007,16 @@
         {
           "required": [
             "regressions"
+          ]
+        },
+        {
+          "required": [
+            "choices"
+          ]
+        },
+        {
+          "required": [
+            "commonRules"
           ]
         }
       ]
@@ -940,6 +1089,16 @@
         "coverage": {
           "type": "object",
           "properties": {
+            "states": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
+            "compositeStates": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100
+            },
             "transitions": {
               "type": "number",
               "minimum": 0,
@@ -983,6 +1142,41 @@
         "initial",
         "limits",
         "coverage"
+      ],
+      "additionalProperties": false
+    },
+    "choice": {
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "parent": {
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+        }
+      },
+      "type": "object",
+      "required": [
+        "label"
+      ],
+      "additionalProperties": false
+    },
+    "commonRule": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "name",
+        "description"
       ],
       "additionalProperties": false
     }
