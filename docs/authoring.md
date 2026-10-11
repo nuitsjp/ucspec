@@ -260,7 +260,7 @@ null、任意のGo/JavaScript、ファイル/APIアクセス、算術で無制�
     "start":{"state":"search","values":{"role":"editor"}},
     "steps":[
       {"transition":"searchFound"},
-      {"transition":"openCustomer"},
+      {"transition":"openCustomer","input":{"exists":true}},
       {"transition":"openView"},
       {"transition":"openEdit"},
       {"transition":"updateCustomer","input":{"valid":true}}
@@ -295,7 +295,7 @@ recoverableは「必ずいつか完了する」（AF）ではありません。�
       "kind":"invariant",
       "description":"編集中は対象が存在する",
       "assert":{"or":[
-        {"ne":[{"var":"$state"},"editing"]},
+        {"ne":[{"var":"$state"},"edit"]},
         {"var":"exists"}
       ]}
     }
