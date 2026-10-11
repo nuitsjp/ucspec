@@ -241,3 +241,139 @@ func TestRecoverableDoesNotClaimInevitableTermination(t *testing.T) {
 		t.Fatal(r)
 	}
 }
+
+func convergingStartsSpec() *model.Spec {
+	s := &model.Spec{Document: model.EmptyDocument(), Project: model.Project{
+		SchemaVersion: "1", Name: "converging starts", Files: []string{"model.json"}, Output: "out",
+		Initial: []model.Snapshot{{State: "a"}, {State: "b"}},
+		Limits:  model.Limits{States: 100, Steps: 8, Paths: 10000, Combinations: 100},
+	}}
+	s.Screens["screen"] = model.Screen{Label: "screen"}
+	s.States["a"] = model.State{Label: "a", Screen: "screen", Events: []string{"goA"}}
+	s.States["b"] = model.State{Label: "b", Screen: "screen", Events: []string{"goB"}}
+	s.States["middle"] = model.State{Label: "middle", Screen: "screen", Events: []string{"finish"}}
+	s.States["end"] = model.State{Label: "end", Screen: "screen", Terminal: true}
+	s.Events["goA"] = model.Event{Label: "goA", Source: "user"}
+	s.Events["goB"] = model.Event{Label: "goB", Source: "user"}
+	s.Events["finish"] = model.Event{Label: "finish", Source: "user", Parameters: map[string][]any{"confirmed": {true}}}
+	s.Transitions["ta"] = model.Transition{From: "a", To: "end", Event: "goA", Action: "complete a"}
+	s.Transitions["tb"] = model.Transition{From: "b", To: "middle", Event: "goB", Action: "continue b"}
+	s.Transitions["finish"] = model.Transition{From: "middle", To: "end", Event: "finish", Action: "complete b"}
+	end := map[string]any{"eq": []any{map[string]any{"var": "$state"}, "end"}}
+	s.UseCases["flow"] = model.UseCase{
+		Name: "flow", Goal: "complete", Actor: "actor", Starts: s.Project.Initial, End: end,
+		Scope: []string{"ta", "tb", "finish"}, Scenarios: map[string]model.Scenario{
+			"fromA": {Name: "from a", Start: model.Snapshot{State: "a"}, Steps: []model.Step{{Transition: "ta"}}, Expect: end},
+			"fromB": {Name: "from b", Start: model.Snapshot{State: "b"}, Steps: []model.Step{{Transition: "tb"}, {Transition: "finish", Input: map[string]any{"confirmed": true}}}, Expect: end},
+		},
+	}
+	return s
+}
+
+func TestImpactIncludesOutOfScopeEventBranches(t *testing.T) {
+	for _, event := range []string{"goA", "side"} {
+		t.Run(event, func(t *testing.T) {
+			s := convergingStartsSpec()
+			if event == "side" {
+				state := s.States["a"]
+				state.Events = append(state.Events, event)
+				s.States["a"] = state
+				s.Events[event] = model.Event{Label: event, Source: "user"}
+				s.Transitions["side"] = model.Transition{From: "a", To: "a", Event: event, Action: "stay", UnownedReason: "outside flow scope"}
+			}
+			s.Transitions["shadow"] = model.Transition{From: "a", To: "end", Event: event, Action: "alternate", Guard: false, UnownedReason: "outside flow scope"}
+			old := Analyze(s, "test")
+			if old.Status != "verified" {
+				t.Fatalf("baseline status %s: %+v", old.Status, old.Diagnostics)
+			}
+			tr := s.Transitions["shadow"]
+			tr.Guard = true
+			s.Transitions["shadow"] = tr
+			now := Analyze(s, "test")
+			if now.Status != "failed" || now.UseCases[0].Complete {
+				t.Fatalf("event conflict must invalidate the use-case graph: %+v", now)
+			}
+			if err := Compare(now, old); err != nil {
+				t.Fatal(err)
+			}
+			if !model.Contains(now.Impact.AffectedUseCases, "flow") {
+				t.Fatalf("out-of-scope event conflict omitted from affected use cases: %+v", now.Impact)
+			}
+		})
+	}
+}
+
+func TestImpactIncludesUseCaseStartReachability(t *testing.T) {
+	s := &model.Spec{Document: model.EmptyDocument(), Project: model.Project{
+		SchemaVersion: "1", Name: "start reachability", Files: []string{"model.json"}, Output: "out",
+		Initial: []model.Snapshot{{State: "boot"}},
+		Limits:  model.Limits{States: 100, Steps: 8, Paths: 10000, Combinations: 100},
+	}}
+	s.Screens["screen"] = model.Screen{Label: "screen"}
+	for _, state := range []string{"boot", "gate", "ready"} {
+		s.States[state] = model.State{Label: state, Screen: "screen", Events: []string{"go"}}
+	}
+	for _, state := range []string{"done", "stopped"} {
+		s.States[state] = model.State{Label: state, Screen: "screen", Terminal: true}
+	}
+	s.Events["go"] = model.Event{Label: "go", Source: "user"}
+	s.Transitions["enter"] = model.Transition{From: "boot", To: "gate", Event: "go", Action: "enter", UnownedReason: "before flow"}
+	s.Transitions["prepare"] = model.Transition{From: "gate", To: "ready", Event: "go", Action: "prepare", UnownedReason: "before flow"}
+	s.Transitions["finish"] = model.Transition{From: "ready", To: "done", Event: "go", Action: "finish"}
+	s.UseCases["flow"] = model.UseCase{
+		Name: "flow", Goal: "finish", Actor: "actor", Starts: []model.Snapshot{{State: "ready"}}, Scope: []string{"finish"},
+		End: map[string]any{"eq": []any{map[string]any{"var": "$state"}, "done"}},
+	}
+	old := Analyze(s, "test")
+	if old.Status != "verified" {
+		t.Fatalf("baseline status %s: %+v", old.Status, old.Diagnostics)
+	}
+	tr := s.Transitions["enter"]
+	tr.To = "stopped"
+	s.Transitions["enter"] = tr
+	now := Analyze(s, "test")
+	unreachableStart := false
+	for _, d := range now.Diagnostics {
+		if d.Code == "unreachable-start" && d.Subject == "usecases/flow" {
+			unreachableStart = true
+		}
+	}
+	if now.Status != "failed" || !unreachableStart {
+		t.Fatalf("redirecting the approach path must make the start unreachable: %+v", now)
+	}
+	if err := Compare(now, old); err != nil {
+		t.Fatal(err)
+	}
+	if !model.Contains(now.Impact.AffectedUseCases, "flow") {
+		t.Fatalf("unreachable use-case start omitted from affected use cases: %+v", now.Impact)
+	}
+}
+
+func TestCompletionWitnessesStartAtCheckedConfiguration(t *testing.T) {
+	s := convergingStartsSpec()
+	r := Analyze(s, "test")
+	if r.Status != "verified" {
+		t.Fatalf("status %s: %+v", r.Status, r.Diagnostics)
+	}
+	checks := map[string]model.Check{}
+	for _, c := range r.Checks {
+		checks[c.ID] = c
+	}
+	u := s.UseCases["flow"]
+	for id, scenarioID := range map[string]string{"completion/flow/1": "fromA", "completion/flow/2": "fromB"} {
+		t.Run(id, func(t *testing.T) {
+			c, ok := checks[id]
+			if !ok || c.Status != "verified" || c.Witness == nil {
+				t.Fatalf("missing verified completion witness: %+v", c)
+			}
+			want := u.Scenarios[scenarioID]
+			if !model.Equal(c.Witness.Start, want.Start) || !model.Equal(c.Witness.Steps, want.Steps) {
+				t.Fatalf("completion witness = %s; want start=%s steps=%s", model.JSON(c.Witness), model.JSON(want.Start), model.JSON(want.Steps))
+			}
+			sc := model.Scenario{Name: id, Start: c.Witness.Start, Steps: c.Witness.Steps, Expect: u.End}
+			if replay := engine.New(s).Replay(id, sc, &u); !replay.Valid {
+				t.Fatalf("completion witness cannot be replayed: %s", replay.Error)
+			}
+		})
+	}
+}

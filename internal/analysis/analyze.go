@@ -47,6 +47,7 @@ func Analyze(s *model.Spec, version string) *model.Report {
 			status := "incomplete"
 			message := "completion reachability not established"
 			seen := map[int]bool{start: true}
+			parentEdges := map[int]int{}
 			queue := []int{start}
 			var witness *model.Witness
 			for q := 0; q < len(queue); q++ {
@@ -54,13 +55,23 @@ func Analyze(s *model.Spec, version string) *model.Report {
 				if g.Nodes[n].Terminal {
 					status = "verified"
 					message = "some completion path exists from this start"
-					witness = copyWitness(g.Nodes[n].Witness)
+					steps := []model.Step{}
+					for at := n; at != start; {
+						edge := g.Edges[parentEdges[at]]
+						steps = append(steps, edge.Step)
+						at = edge.From
+					}
+					for left, right := 0, len(steps)-1; left < right; left, right = left+1, right-1 {
+						steps[left], steps[right] = steps[right], steps[left]
+					}
+					witness = &model.Witness{Start: g.Nodes[start].State, Steps: steps}
 					break
 				}
 				for _, edgeID := range g.Out[n] {
 					to := g.Edges[edgeID].To
 					if !seen[to] {
 						seen[to] = true
+						parentEdges[to] = edgeID
 						queue = append(queue, to)
 					}
 				}
@@ -282,19 +293,49 @@ func definitions(s *model.Spec, r *model.Report) {
 	put("decisions", s.Decisions)
 	put("regressions", s.Regressions)
 	r.Definitions["project"] = model.Hash(s.Project)
+	predecessors := map[string][]string{}
+	for _, t := range s.Transitions {
+		predecessors[t.To] = append(predecessors[t.To], t.From)
+	}
 	// Conservative transitive dependency closure: conditions and state variables may
 	// affect any path. Prefer over-reporting impact to silently missing an effect.
 	for _, id := range model.Keys(s.UseCases) {
 		u := s.UseCases[id]
 		deps := map[string]bool{"project": true, "usecases/" + id: true}
+		states := map[string]bool{}
+		for _, start := range u.Starts {
+			states[start.State] = true
+		}
 		for _, tr := range u.Scope {
 			t := s.Transitions[tr]
 			deps["transitions/"+tr] = true
-			deps["states/"+t.From] = true
-			deps["states/"+t.To] = true
-			deps["screens/"+s.States[t.From].Screen] = true
-			deps["screens/"+s.States[t.To].Screen] = true
+			states[t.From] = true
+			states[t.To] = true
 			deps["events/"+t.Event] = true
+		}
+		// Start reachability also depends on paths from project.initial before scope.
+		// Include control-state predecessors conservatively, without evaluating guards.
+		queue := model.Keys(states)
+		for i := 0; i < len(queue); i++ {
+			for _, from := range predecessors[queue[i]] {
+				if !states[from] {
+					states[from] = true
+					queue = append(queue, from)
+				}
+			}
+		}
+		// Exploration selects every accepted event before restricting paths to scope.
+		for state := range states {
+			deps["states/"+state] = true
+			deps["screens/"+s.States[state].Screen] = true
+			for _, event := range s.States[state].Events {
+				deps["events/"+event] = true
+			}
+		}
+		for tr, t := range s.Transitions {
+			if states[t.From] && model.Contains(s.States[t.From].Events, t.Event) {
+				deps["transitions/"+tr] = true
+			}
 		}
 		for k := range s.Conditions {
 			deps["conditions/"+k] = true

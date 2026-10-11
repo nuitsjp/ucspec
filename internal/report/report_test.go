@@ -2,7 +2,10 @@ package report_test
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/base64"
 	"errors"
+	"fmt"
 	"github.com/nuitsjp/usecase-spec/internal/analysis"
 	"github.com/nuitsjp/usecase-spec/internal/assets"
 	"github.com/nuitsjp/usecase-spec/internal/model"
@@ -10,6 +13,7 @@ import (
 	"github.com/nuitsjp/usecase-spec/internal/testkit"
 	"strings"
 	"testing"
+	"testing/fstest"
 )
 
 func TestStandaloneHTMLAndEscaping(t *testing.T) {
@@ -34,6 +38,28 @@ func TestStandaloneHTMLAndEscaping(t *testing.T) {
 	c, e := report.Build(s, r, testkit.FixtureLayout, assets.Files)
 	if e != nil || !bytes.Equal(b, c) {
 		t.Fatal("renderer is nondeterministic")
+	}
+}
+func TestScriptCSPMatchesBrowserNewlines(t *testing.T) {
+	const normalized = "'use strict';\nconsole.log('ready');\n"
+	for _, newline := range []string{"\r\n", "\r"} {
+		t.Run(fmt.Sprintf("%q", newline), func(t *testing.T) {
+			files := fstest.MapFS{
+				"viewer/style.css": {Data: []byte("body {}")},
+				"viewer/app.js":    {Data: []byte(strings.ReplaceAll(normalized, "\n", newline))},
+			}
+			b, err := report.Build(nil, &model.Report{}, nil, files)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !bytes.Contains(b, []byte("<script>"+normalized+"</script>")) {
+				t.Error("inline script is not normalized to browser LF newlines")
+			}
+			hash := sha256.Sum256([]byte(normalized))
+			if !bytes.Contains(b, []byte("sha256-"+base64.StdEncoding.EncodeToString(hash[:]))) {
+				t.Error("CSP hash does not match the script after browser newline normalization")
+			}
+		})
 	}
 }
 func TestRendererRejectsBrokenLayout(t *testing.T) {

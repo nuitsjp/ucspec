@@ -122,6 +122,9 @@ func ReadProject(path string, c Codec) (model.Project, error) {
 	p.Limits.Defaults()
 	return p, nil
 }
+
+// Load retains the decoded project configuration when a source file fails to load.
+// The caller must check the error before using the document for analysis.
 func Load(path string, c Codec) (*model.Spec, error) {
 	p, err := ReadProject(path, c)
 	if err != nil {
@@ -130,27 +133,27 @@ func Load(path string, c Codec) (*model.Spec, error) {
 	s := &model.Spec{Project: p, Document: model.EmptyDocument(), Sources: map[string]model.Source{}}
 	root, err := filepath.Abs(filepath.Dir(path))
 	if err != nil {
-		return nil, err
+		return s, err
 	}
 	realRoot, err := filepath.EvalSymlinks(root)
 	if err != nil {
-		return nil, err
+		return s, err
 	}
 	all := map[string]bool{}
 	for _, pattern := range p.Files {
 		if filepath.IsAbs(pattern) || strings.Contains(filepath.ToSlash(pattern), "../") || pattern == ".." {
-			return nil, fmt.Errorf("source pattern must stay in spec directory: %s", pattern)
+			return s, fmt.Errorf("source pattern must stay in spec directory: %s", pattern)
 		}
 		matches, er := filepath.Glob(filepath.Join(root, filepath.FromSlash(pattern)))
 		if er != nil {
-			return nil, er
+			return s, er
 		}
 		if len(matches) == 0 {
-			return nil, fmt.Errorf("source pattern matched no files: %s", pattern)
+			return s, fmt.Errorf("source pattern matched no files: %s", pattern)
 		}
 		for _, m := range matches {
 			if all[m] {
-				return nil, fmt.Errorf("source included more than once: %s", m)
+				return s, fmt.Errorf("source included more than once: %s", m)
 			}
 			all[m] = true
 		}
@@ -158,27 +161,27 @@ func Load(path string, c Codec) (*model.Spec, error) {
 	for _, name := range model.Keys(all) {
 		real, er := filepath.EvalSymlinks(name)
 		if er != nil {
-			return nil, er
+			return s, er
 		}
 		rel, er := filepath.Rel(realRoot, real)
 		if er != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-			return nil, fmt.Errorf("source escapes spec directory: %s", name)
+			return s, fmt.Errorf("source escapes spec directory: %s", name)
 		}
 		b, er := os.ReadFile(name)
 		if er != nil {
-			return nil, er
+			return s, er
 		}
 		var doc model.Document
 		if er = decode(c, b, name, "document", &doc); er != nil {
-			return nil, fmt.Errorf("%s: %w", name, er)
+			return s, fmt.Errorf("%s: %w", name, er)
 		}
 		if doc.SchemaVersion != "1" {
-			return nil, fmt.Errorf("%s: unsupported schemaVersion %q", name, doc.SchemaVersion)
+			return s, fmt.Errorf("%s: unsupported schemaVersion %q", name, doc.SchemaVersion)
 		}
 		display, _ := filepath.Rel(root, name)
 		display = filepath.ToSlash(display)
 		if er = merge(s, doc, display); er != nil {
-			return nil, er
+			return s, er
 		}
 	}
 	s.Hash = model.Hash(struct {

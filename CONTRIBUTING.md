@@ -38,12 +38,15 @@ go vet ./...
 
 テスト用モデルの追加は小さく、結果を人が手計算できる形を優先します。形式的にもっともらしい名前だけで新しい検証を追加しないでください。
 
-## 任意のブラウザースモークテスト
+## ブラウザースモークテスト
 
-PythonとPlaywright/Chromiumがある開発環境では、実CLIで生成したHTMLに対して以下を実行できます。これはGoビルドや通常利用の必須依存ではありません。
+Windows CIでは、実CLIで生成したHTMLをMicrosoft Edgeと固定版のPlaywright CLIで検査します。ローカルではNode.js 24.21.0とMicrosoft Edgeを用意し、サンプルHTMLを生成してから実行します。Node.jsとnpmの依存は開発用ブラウザーテスト専用で、Goビルドや製品利用には不要です。
 
 ```powershell
-python scripts/browser-smoke.py --report examples/customer-crud/artifacts/usecase-spec/index.html
+npm ci --ignore-scripts --no-audit --no-fund
+.\scripts\test-browser.ps1
 ```
 
-既にあるChromiumを使う場合は `--chromium <実行ファイル>` を指定します。シナリオ選択、経路強調、反例候補とサンプルCRUD画面を検査します。この試験はHTML文字列をブラウザーへ渡すもので、Windowsのfile://表示やELKの配置品質をそれ自体で保証するものではありません。結果はvalidation/browserに出力します。
+別の生成HTMLは `-Report <HTMLファイル>` で指定します。UTF-8のファイルを元の改行のままブラウザーへ渡し、CSPエラー、SVG表示、シナリオ選択、経路強調、未網羅候補とサンプルCRUD画面を検査します。CLIがコード実行エラーを成功終了コードで返す場合も失敗として扱います。結果は `validation/browser/results.json`、CLIの作業ログは結果JSONに記載した一時ディレクトリに残します。
+
+この試験はHTML文字列を `setContent` でブラウザーへ渡すため、Windowsのfile://表示やELKの配置品質をそれ自体で保証するものではありません。ブラウザーは検査の成否によらず終了します。

@@ -32,6 +32,19 @@ func TestCompilerFileEscape(t *testing.T) {
 		t.Fatal("escape accepted")
 	}
 }
+
+func TestLoadRetainsProjectOnSourceFailure(t *testing.T) {
+	root := t.TempDir()
+	p := model.Project{SchemaVersion: "1", Name: "test", Files: []string{"missing.json"}, Output: "custom-report"}
+	path := filepath.Join(root, "project.json")
+	if err := os.WriteFile(path, []byte(model.JSON(p)), 0600); err != nil {
+		t.Fatal(err)
+	}
+	s, err := Load(path, JSONCodec())
+	if err == nil || s == nil || s.Project.Output != p.Output {
+		t.Fatalf("project configuration lost on source failure: spec=%v error=%v", s, err)
+	}
+}
 func TestMergeDoesNotOverwrite(t *testing.T) {
 	s := &model.Spec{Document: model.EmptyDocument(), Sources: map[string]model.Source{}}
 	d := model.EmptyDocument()
