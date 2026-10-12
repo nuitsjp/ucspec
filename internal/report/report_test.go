@@ -37,8 +37,8 @@ func TestStandaloneHTMLAndEscaping(t *testing.T) {
 	if !bytes.Contains(b, []byte("sha256-")) || !bytes.Contains(b, []byte("data-transition")) {
 		t.Fatal("CSP or graph missing")
 	}
-	if !bytes.Contains(b, []byte(`id="common-rules"`)) {
-		t.Fatal("common rule section missing")
+	if !bytes.Contains(b, []byte(`"systemError":{"name":`)) || !bytes.Contains(b, []byte(`page1('rules','共通ルール')`)) {
+		t.Fatal("common rule page missing")
 	}
 	c, e := report.Build(s, r, testkit.FixtureLayout, assets.Files)
 	if e != nil || !bytes.Equal(b, c) {

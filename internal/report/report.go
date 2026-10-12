@@ -674,8 +674,6 @@ type diagram struct {
 type view struct {
 	Name      string
 	Status    string
-	Version   string
-	Hash      string
 	States    int
 	UseCases  int
 	Scenarios int
@@ -688,7 +686,7 @@ type view struct {
 }
 
 func Build(s *model.Spec, r *model.Report, layout Layout, assets fs.FS) ([]byte, error) {
-	v := view{Name: r.Name, Status: r.Status, Version: r.ToolVersion, Hash: r.InputHash, States: r.ReachableStates, UseCases: len(r.UseCases), Scenarios: len(r.Scenarios)}
+	v := view{Name: r.Name, Status: r.Status, States: r.ReachableStates, UseCases: len(r.UseCases), Scenarios: len(r.Scenarios)}
 	if s == nil {
 		s = model.NewSpec()
 	}
@@ -756,14 +754,7 @@ func ErrorPage(message string) []byte {
 
 const page = `<!doctype html>
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="{{.CSP}}"><title>{{.Name}} | ucspec</title><style>{{.CSS}}</style></head>
-<body><header><div class="eyebrow">ucspec / EXECUTABLE USE-CASE SPECIFICATION</div><h1>{{.Name}}</h1><p>目的から仕様へ。共有された振る舞いを、シナリオと検証で確認する。</p></header>
-<div class="layout"><aside><strong>ユースケース構造</strong><div id="nav" class="nav-tree"></div><hr><label for="filter">シナリオを検索</label><input id="filter" class="search" placeholder="シナリオ名"><hr><a href="#coverage">網羅率・未網羅項目</a><br><a id="common-rules-link" href="#common-rules" hidden>共通ルール</a><br><a href="#checks">モデル検査</a><br><a href="#diagnostics">診断</a></aside>
-<main><div class="summary"><div class="stat"><small>検証結果</small><strong class="status {{.Status}}">{{.Status}}</strong></div><div class="stat"><small>到達できる末端状態</small><strong>{{.States}}</strong></div><div class="stat"><small>ユースケース</small><strong>{{.UseCases}}</strong></div><div class="stat"><small>登録シナリオ・回帰ケース</small><strong>{{.Scenarios}}</strong></div></div>
-<div class="notice">ここでの網羅率は<strong>シナリオ定義</strong>の網羅性です。実装のテスト実行結果ではありません。検証済みは、定義した状態の構造とシナリオの範囲に限ります。</div>
-<section class="card" id="uc-summary"></section><section class="card"><h2>画面・状態遷移</h2><div class="toolbar"><select id="view-select" aria-label="表示ユースケース"></select><button id="zoom-out" aria-label="縮小">−</button><span id="zoom-label"></span><button id="zoom-in" aria-label="拡大">＋</button><button id="zoom-fit">全体を表示</button><label class="transition-toggle"><input id="show-all-transitions" type="checkbox">全遷移を表示</label><span id="transition-visibility" class="mutedtext small" role="status"></span><span class="mutedtext small">状態・矢印をクリックすると詳細を表示</span></div><div id="graph" class="diagram"></div></section>
-<section class="card" id="detail"><h2>詳細</h2><p class="mutedtext">シナリオ、遷移、未網羅項目、反例を選択してください。</p></section><section class="card" id="coverage"></section>
-<section class="card" id="common-rules" hidden><h2>共通ルール</h2></section><section class="card" id="checks"><h2>モデル検査</h2></section><section class="card" id="diagnostics"><h2>診断</h2></section><section class="card" id="impact"></section>
-<section class="card"><h2>再現性</h2><p>ツール: {{.Version}}</p><p>入力 SHA-256: <code>{{.Hash}}</code></p><button id="download-json">検査結果JSONを書き出す</button></section></main></div>
-<footer>モデルの期待結果は実装の保証ではありません。未網羅候補は自動承認されません。ネットワーク不要の自己完結型HTML。</footer>
+<body><header class="topbar"><button id="toc-button" type="button" aria-controls="toc" aria-expanded="false">目次</button><strong class="product">{{.Name}}</strong><span id="crumbs" class="where"></span><span class="meta"><span class="status {{.Status}}">{{.Status}}</span><span>ユースケース {{.UseCases}}</span><span>シナリオ {{.Scenarios}}</span><span>末端状態 {{.States}}</span></span></header>
+<div class="layout"><nav id="toc" aria-label="目次"><div class="toc-head"><span>目次</span><button id="toc-pin" type="button">左に固定</button></div><input id="filter" class="search" placeholder="シナリオを検索" aria-label="シナリオを検索"><div id="nav" class="nav-tree"></div></nav><main id="main"></main></div>
 {{range .Diagrams}}<template id="diagram-{{.ID}}">{{.SVG}}</template>{{end}}
 <script id="spec-data" type="application/json">{{.Data}}</script><script>{{.JS}}</script></body></html>`

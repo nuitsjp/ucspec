@@ -18,6 +18,16 @@ async page => {
     await page.setContent(inputs.report, { waitUntil: 'load' });
     assert(errors.length === 0, 'Renderer emitted JavaScript or CSP errors');
     await page.setViewportSize({ width: 1440, height: 1000 });
+    // The table of contents is a drawer; pinning keeps it beside the page.
+    const pinToc = async target => {
+      await target.locator('#toc-button').click();
+      await target.locator('#toc-pin').click();
+    };
+    const openUseCase = (target, id) => target.locator('#nav .nav-usecase-summary[data-uc="' + id + '"]').click();
+    assert(!(await page.locator('#toc').isVisible()), 'Table of contents must start closed');
+    await pinToc(page);
+    assert(await page.locator('#toc').isVisible(), 'Pinned table of contents must stay visible');
+    checks.push('renderer: table of contents opens as a drawer and can be pinned');
     assert(await page.locator('#nav .nav-package').count() === 2, 'Package navigation did not render');
     assert(await page.locator('#nav .nav-usecase-summary').count() === 5, 'Use case navigation did not render');
     assert(await page.locator('#nav .nav-scenario').count() === 18, 'Expected 11 use case scenarios and 7 regressions');
@@ -42,6 +52,20 @@ async page => {
     }
     checks.push('renderer: system and all five use case diagrams show the defined start markers and arrows at the top center');
     await page.locator('#view-select').selectOption('');
+    const zoomBefore = parseInt(await page.locator('#zoom-label').innerText(), 10);
+    await page.locator('#graph').hover();
+    await page.mouse.wheel(0, -400);
+    assert(parseInt(await page.locator('#zoom-label').innerText(), 10) > zoomBefore, 'Wheel must zoom the diagram in');
+    const canvas = page.locator('#graph .dg-canvas');
+    const panBefore = await canvas.evaluate(node => node.style.transform);
+    const box = await page.locator('#graph').boundingBox();
+    await page.mouse.move(box.x + 40, box.y + box.height - 40);
+    await page.mouse.down();
+    await page.mouse.move(box.x + 140, box.y + box.height - 90, { steps: 5 });
+    await page.mouse.up();
+    assert(await canvas.evaluate(node => node.style.transform) !== panBefore, 'Dragging must pan the diagram');
+    await page.locator('#zoom-fit').click();
+    checks.push('renderer: wheel zoom and drag pan on the diagram');
     const hiddenIDs = await page.evaluate(() => Object.entries(JSON.parse(document.getElementById('spec-data').textContent).spec.transitions).filter(([,transition]) => transition.kind !== 'start' && !transition.defaultVisible).map(([id]) => id));
     assert(hiddenIDs.length > 0, 'Fixture needs default-hidden transitions');
     for (const id of hiddenIDs) assert(await page.locator('#graph [data-transition="' + id + '"]').count() === 0, 'Hidden transitions must be excluded from the default layout');
@@ -57,24 +81,33 @@ async page => {
     assert(await selectedMenu.isVisible() && (await selectedMenu.getAttribute('class')).includes('selected'), 'Diagram switches must preserve selection');
     checks.push('renderer: package navigation, visible layout variants, selected hidden transition and zoom');
     assert(await page.locator('#graph svg').count() === 1, 'SVG graph did not render');
-    await page.locator('#view-select').selectOption('editCustomer');
+    await openUseCase(page, 'editCustomer');
     assert(await page.locator('#nav .nav-scenario[data-uc="editCustomer"]').count() === 3, 'Unexpected edit scenarios');
+    assert(await page.locator('.spread > .side #graph svg').count() === 1 && await page.locator('.spread > .side + article.doc').count() === 1, 'Use case page must put the diagram left of the text');
     await page.locator('#nav .nav-scenario[data-scenario="editCustomer/update"]').click();
     assert(await page.locator('#graph .edge.selected').count() > 0, 'Scenario path was not highlighted');
-    assert(await page.locator('#detail table').count() === 1, 'Scenario table did not render');
-    checks.push('renderer: use case navigation, SVG, scenario table and path highlighting');
+    const steps = page.locator('#main .steps > .step');
+    assert(await steps.count() === 2, 'Scenario steps did not render');
+    assert((await steps.nth(1).innerText()).includes('システムは顧客を更新する'), 'Steps must narrate the action');
+    await steps.nth(1).click();
+    assert((await steps.nth(1).getAttribute('class')).includes('active')
+      && await page.locator('#graph [data-transition="顧客管理/顧客編集:更新"].selected').count() === 1
+      && await page.locator('#graph [data-transition="顧客管理/顧客閲覧:編集"].selected').count() === 0, 'Clicking a step must highlight only its transitions');
+    checks.push('renderer: use case navigation, SVG, narrated scenario steps and path highlighting');
     assert((await page.locator('.scenario-goal').innerText()).length > 0, 'Scenario purpose is missing');
     assert((await page.locator('.scenario-outcome').innerText()).length > 0, 'Scenario outcome is missing');
-    assert(await page.locator('.scenario-outcome').evaluate(node => !!(node.compareDocumentPosition(document.querySelector('#detail table')) & Node.DOCUMENT_POSITION_FOLLOWING)), 'Outcome must precede the operation table');
-    assert((await page.locator('#detail').innerText()).includes('アクター: 編集担当者'), 'Scenario actor is missing');
+    assert(await page.locator('.scenario-outcome').evaluate(node => !!(node.compareDocumentPosition(document.querySelector('#main .steps')) & Node.DOCUMENT_POSITION_FOLLOWING)), 'Outcome must precede the steps');
+    assert(/アクター\s*編集担当者/.test(await page.locator('#main .facts').innerText()), 'Scenario actor is missing');
     checks.push('renderer: purpose and expected outcome precede steps; the scenario actor is shown');
-    await page.locator('#detail').screenshot({ path: inputs.output + '/scenario.png' });
+    await page.screenshot({ path: inputs.output + '/scenario.png' });
+    await openUseCase(page, 'editCustomer');
     assert(await page.locator('#coverage .review-guidance').count() === 6, 'All six metrics need review guidance');
-    await page.locator('#view-select').selectOption('viewCustomer');
+    await openUseCase(page, 'viewCustomer');
     const candidate = page.locator('#coverage details[data-coverage-kind]').filter({ has: page.locator('.coverage-item > button') }).first();
     await candidate.locator('summary').first().click();
     await candidate.locator('.coverage-item > button').first().click();
     assert((await page.locator('#detail h2').innerText()).includes('未網羅'), 'Missing-path candidate did not open');
+    assert(await page.locator('#graph .selected').count() > 0, 'Missing-path candidate must be highlighted');
     checks.push('renderer: missing-path candidate navigation');
     assert(errors.length === 0, 'Renderer emitted JavaScript or CSP errors');
     checks.push('renderer: no JavaScript or CSP errors');
@@ -82,8 +115,10 @@ async page => {
     const reviewPage = await page.context().newPage();
     try {
       observe(reviewPage);
+      await reviewPage.setViewportSize({ width: 1440, height: 1000 });
       await reviewPage.setContent(inputs.reviews, { waitUntil: 'load' });
-      await reviewPage.locator('#view-select').selectOption('viewCustomer');
+      await pinToc(reviewPage);
+      await openUseCase(reviewPage, 'viewCustomer');
       const coverage = reviewPage.locator('[data-coverage-kind="boundedPaths"]');
       await coverage.locator('summary').first().click();
       const rawCoverage = await coverage.locator('summary').first().innerText();
@@ -94,11 +129,12 @@ async page => {
       }
       assert(await reviewPage.evaluate(() => window.injected === undefined), 'Review text executed as HTML');
       await coverage.locator('.review-scenario').first().click();
-      assert((await reviewPage.locator('#detail h2').innerText()).includes('viewCustomer/view'), 'Representative scenario did not open');
+      assert((await reviewPage.locator('#main .facts').innerText()).includes('viewCustomer/view'), 'Representative scenario did not open');
       assert((await reviewPage.locator('.scenario-goal').innerText()).length > 0, 'Representative purpose is missing');
       checks.push('renderer: grouped coverage reviews, reasons, design requirements and representative scenario navigation');
       await reviewPage.setContent(inputs.stale, { waitUntil: 'load' });
-      await reviewPage.locator('#view-select').selectOption('viewCustomer');
+      await pinToc(reviewPage);
+      await openUseCase(reviewPage, 'viewCustomer');
       const staleCoverage = reviewPage.locator('[data-coverage-kind="boundedPaths"]');
       await staleCoverage.locator('summary').first().click();
       assert(await staleCoverage.locator('.coverage-review[data-review-status="stale"]').count() === 3, 'Old review decisions must remain visible as stale');
