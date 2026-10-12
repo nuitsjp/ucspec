@@ -61,10 +61,11 @@ type Graph struct {
 	Edges    []Connection   `json:"edges"`
 }
 
-// graphFor builds the semantic graph consumed by the layout engine. Choice
-// pseudo-states are nodes in this graph, while their outgoing edges remain
-// ordinary transition IDs so that layout and coverage share the same identity.
-func graphFor(s *model.Spec, scope, visible []string, starts map[string]bool) Graph {
+// graphFor builds the semantic graph consumed by the layout engine. Decisions
+// are nodes, while their branches remain ordinary transition IDs so that layout
+// and coverage share the same identity. Start transitions are drawn from the
+// initial markers inside composites; outer markers point at diagram starts.
+func graphFor(s *model.Spec, scope, visible []string, starts map[string]string) Graph {
 	g := Graph{ID: "root", Options: map[string]any{
 		"elk.algorithm": "layered", "elk.direction": "DOWN",
 		"elk.layered.nodePlacement.strategy": "NETWORK_SIMPLEX",
@@ -74,28 +75,38 @@ func graphFor(s *model.Spec, scope, visible []string, starts map[string]bool) Gr
 		"elk.layered.spacing.nodeNodeBetweenLayers": 100,
 		"elk.padding": "[top=45,left=45,bottom=45,right=45]",
 	}}
-	ids := scope
 	states := map[string]bool{}
-	choices := map[string]bool{}
-	if ids == nil {
-		ids = model.Keys(s.Transitions)
-		for id := range s.States {
+	decisions := map[string]bool{}
+	addVertex := func(id string) {
+		if id == "" {
+			return
+		}
+		if s.IsDecision(id) {
+			decisions[id] = true
+		} else {
 			states[id] = true
 		}
-		for id := range s.Choices {
-			choices[id] = true
+	}
+	// States of every scoped transition keep a stable layout across visibility
+	// modes; decisions appear only with a visible transition that touches them.
+	for _, id := range scope {
+		t := s.Transitions[id]
+		for _, v := range []string{t.From, drawTarget(s, t)} {
+			if !s.IsDecision(v) {
+				addVertex(v)
+			}
 		}
 	}
-	for _, id := range ids {
+	for _, id := range visible {
 		t := s.Transitions[id]
-		addGraphNode(s, states, choices, t.From)
-		addGraphNode(s, states, choices, t.To)
+		addVertex(t.From)
+		addVertex(drawTarget(s, t))
 	}
-	for id := range starts {
-		addGraphNode(s, states, choices, id)
+	for _, target := range starts {
+		addVertex(target)
 	}
-	// Include parent containers and deterministic initial descendants needed to
-	// make a scoped diagram intelligible without adding unrelated transitions.
+	// Include containers and start trees needed to make a diagram intelligible
+	// without adding unrelated events.
 	for changed := true; changed; {
 		changed = false
 		for _, id := range model.Keys(states) {
@@ -103,19 +114,22 @@ func graphFor(s *model.Spec, scope, visible []string, starts map[string]bool) Gr
 			if !ok {
 				continue
 			}
-			for _, needed := range []string{st.Parent, st.Initial} {
-				if needed == "" || states[needed] {
-					continue
-				}
-				if _, ok := s.States[needed]; ok {
-					states[needed] = true
+			needed := []string{}
+			if st.Parent != "" {
+				needed = append(needed, st.Parent)
+			}
+			if st.Start != "" {
+				needed = append(needed, startVertices(s, st.Start)...)
+			}
+			for _, v := range needed {
+				if !states[v] && !decisions[v] {
+					addVertex(v)
 					changed = true
 				}
 			}
 		}
-		for _, id := range model.Keys(choices) {
-			parent := s.Choices[id].Parent
-			if _, ok := s.States[parent]; ok && !states[parent] {
+		for _, id := range model.Keys(decisions) {
+			if parent := s.Decisions[id].Parent; parent != "" && !states[parent] {
 				states[parent] = true
 				changed = true
 			}
@@ -123,26 +137,29 @@ func graphFor(s *model.Spec, scope, visible []string, starts map[string]bool) Gr
 	}
 	for _, id := range model.Keys(starts) {
 		g.Children = append(g.Children, initialShape("__start_"+id))
-		g.Edges = append(g.Edges, Connection{ID: "__start_edge_" + id, Sources: []string{"__start_" + id}, Targets: []string{id}, Labels: []Label{}})
+		g.Edges = append(g.Edges, Connection{ID: "__start_edge_" + id, Sources: []string{"__start_" + id}, Targets: []string{starts[id]}, Labels: actionLabels(s, startActionOf(s, id))})
 	}
 	var shapeFor func(string) Shape
 	shapeFor = func(id string) Shape {
-		if choice, ok := s.Choices[id]; ok {
-			w := math.Max(82, math.Min(250, measure(choice.Label, 12)+34))
-			lines := wrapText(choice.Label, w-24, 12)
+		if d, ok := s.Decisions[id]; ok {
+			label := s.Label(id)
+			w := math.Max(82, math.Min(250, measure(label, 12)+34))
+			lines := wrapText(label, w-24, 12)
 			h := math.Max(72, float64(len(lines))*16+30)
+			_ = d
 			return Shape{ID: id, Width: w, Height: h}
 		}
 		st := s.States[id]
-		w := math.Max(195, math.Min(350, measure(st.Label, 14)+40))
-		height := nodeHeader(st, id, w) + internalHeight(s, visible, id, w)
+		w := math.Max(195, math.Min(350, measure(st.Name, 14)+40))
+		height := nodeHeader(st, w) + internalHeight(s, visible, id, w)
 		n := Shape{ID: id, Width: w, Height: math.Max(76, height+12)}
-		if st.Initial != "" {
+		if st.Start != "" {
+			start := s.Transitions[st.Start]
 			n.Options = map[string]any{"elk.direction": "DOWN", "elk.layered.nodePlacement.strategy": "NETWORK_SIMPLEX", "elk.separateConnectedComponents": false, "elk.padding": fmt.Sprintf("[top=%.0f,left=35,bottom=35,right=35]", height+20)}
 			n.Children = append(n.Children, Shape{ID: "__initial_" + id, Width: 20, Height: 20})
-			n.Edges = append(n.Edges, Connection{ID: "__initial_edge_" + id, Sources: []string{"__initial_" + id}, Targets: []string{st.Initial}, Labels: []Label{}})
+			n.Edges = append(n.Edges, Connection{ID: st.Start, Sources: []string{"__initial_" + id}, Targets: []string{start.To}, Labels: actionLabels(s, start.Action)})
 		}
-		for _, child := range graphChildren(s, states, choices, id) {
+		for _, child := range graphChildren(s, states, decisions, id) {
 			n.Children = append(n.Children, shapeFor(child))
 		}
 		if st.LayoutLayer != nil {
@@ -177,42 +194,97 @@ func graphFor(s *model.Spec, scope, visible []string, starts map[string]bool) Gr
 		}
 		return n
 	}
-	for _, id := range model.Keys(states) {
-		if s.States[id].Parent == "" {
-			g.Children = append(g.Children, shapeFor(id))
-		}
-	}
-	for _, id := range model.Keys(choices) {
-		if s.Choices[id].Parent == "" {
-			g.Children = append(g.Children, shapeFor(id))
-		}
+	for _, id := range graphChildren(s, states, decisions, "") {
+		g.Children = append(g.Children, shapeFor(id))
 	}
 	if hasLayoutLayers(g.Children) {
 		g.Options["elk.partitioning.activate"] = true
 	}
 	for _, id := range sorted(visible) {
 		t := s.Transitions[id]
-		if t.Kind == "internal" {
+		target := drawTarget(s, t)
+		present := func(id string) bool { return states[id] || decisions[id] }
+		if t.Kind == model.KindStart || target == "" || !present(t.From) || !present(target) {
 			continue
 		}
-		lines := transitionLabelLines(s, t)
-		labels := []Label{}
-		if len(lines) > 0 {
-			w := 0.0
-			for _, line := range lines {
-				w = math.Max(w, measure(line, 11))
-			}
-			labels = []Label{{Text: strings.Join(lines, "\n"), Width: w + 12, Height: float64(len(lines))*14 + 4}}
-		}
-		edge := Connection{ID: id, Sources: []string{t.From}, Targets: []string{t.To}, Labels: labels}
+		edge := Connection{ID: id, Sources: []string{t.From}, Targets: []string{target}, Labels: labelsFor(transitionLabelLines(s, t))}
 		// Keep an event's forward path when automatic cycle breaking chooses
-		// between entering a choice and its guarded return to the source.
-		if t.Event != "" {
+		// between entering a decision and a branch back to the source.
+		if t.Kind == model.KindEvent {
 			edge.Options = map[string]any{"elk.layered.priority.direction": 10}
 		}
 		g.Edges = append(g.Edges, edge)
 	}
 	return g
+}
+
+// drawTarget is where an arrow ends. An event without a destination is drawn
+// inside its state; a branch without one returns to the state of its event.
+func drawTarget(s *model.Spec, t model.Transition) string {
+	if t.To != "" {
+		return t.To
+	}
+	if t.Kind == model.KindBranch {
+		return s.Transitions[t.Root].From
+	}
+	return ""
+}
+
+// startVertices are the vertices a start transition leads through.
+func startVertices(s *model.Spec, id string) []string {
+	t := s.Transitions[id]
+	if !s.IsDecision(t.To) {
+		return []string{t.To}
+	}
+	r := []string{t.To}
+	for _, b := range s.Decisions[t.To].Branches {
+		r = append(r, startVertices(s, b)...)
+	}
+	return r
+}
+
+// DiagramTransitions lists the transitions shown for a scope of events: the
+// events, every branch below them, and the branches of start decisions.
+func DiagramTransitions(s *model.Spec, scope []string) []string {
+	set := map[string]bool{}
+	all := scope == nil
+	for _, id := range scope {
+		set[id] = true
+	}
+	for _, id := range model.Keys(s.Transitions) {
+		t := s.Transitions[id]
+		switch {
+		case t.Kind == model.KindStart:
+		case t.Kind == model.KindBranch && s.Transitions[t.Root].Kind == model.KindStart:
+			set[id] = true
+		case all || set[t.Root]:
+			set[id] = true
+		}
+	}
+	return model.Keys(set)
+}
+
+func startActionOf(s *model.Spec, marker string) string {
+	if marker == "root" {
+		return s.Transitions[s.States[""].Start].Action
+	}
+	return ""
+}
+func actionLabels(s *model.Spec, action string) []Label {
+	if action == "" {
+		return []Label{}
+	}
+	return labelsFor(wrapText("/ "+action, 280, 11))
+}
+func labelsFor(lines []string) []Label {
+	if len(lines) == 0 {
+		return []Label{}
+	}
+	w := 0.0
+	for _, line := range lines {
+		w = math.Max(w, measure(line, 11))
+	}
+	return []Label{{Text: strings.Join(lines, "\n"), Width: w + 12, Height: float64(len(lines))*14 + 4}}
 }
 
 func initialShape(id string) Shape {
@@ -284,7 +356,7 @@ func internalTransitions(s *model.Spec, scope []string, state string) []string {
 	ids := []string{}
 	for _, id := range sorted(scope) {
 		t := s.Transitions[id]
-		if t.Kind == "internal" && t.From == state {
+		if t.Kind == model.KindEvent && t.To == "" && t.From == state {
 			ids = append(ids, id)
 		}
 	}
@@ -303,41 +375,29 @@ func internalHeight(s *model.Spec, scope []string, state string, width float64) 
 	return height
 }
 
-func addGraphNode(s *model.Spec, states, choices map[string]bool, id string) {
-	if _, ok := s.Choices[id]; ok {
-		choices[id] = true
-		return
-	}
-	states[id] = true
-}
-
-func graphChildren(s *model.Spec, states, choices map[string]bool, parent string) []string {
+func graphChildren(s *model.Spec, states, decisions map[string]bool, parent string) []string {
 	children := []string{}
 	for _, id := range model.Keys(states) {
 		if s.States[id].Parent == parent {
 			children = append(children, id)
 		}
 	}
-	for _, id := range model.Keys(choices) {
-		if s.Choices[id].Parent == parent {
+	for _, id := range model.Keys(decisions) {
+		if s.Decisions[id].Parent == parent {
 			children = append(children, id)
 		}
 	}
 	return sorted(children)
 }
 
+// transitionLabelLines renders "event", "[branch]" and "/ action" lines.
 func transitionLabelLines(s *model.Spec, t model.Transition) []string {
 	lines := []string{}
-	if t.Event != "" {
-		event := s.Events[t.Event]
-		label := event.Label
-		if label == "" {
-			label = t.Event
-		}
-		lines = append(lines, wrapText(label, 280, 11)...)
-	}
-	if guard := guardDisplay(t); guard != "" {
-		lines = append(lines, wrapText("["+guard+"]", 280, 11)...)
+	switch t.Kind {
+	case model.KindEvent:
+		lines = append(lines, wrapText(t.Name, 280, 11)...)
+	case model.KindBranch:
+		lines = append(lines, wrapText("["+t.Name+"]", 280, 11)...)
 	}
 	if t.Action != "" {
 		lines = append(lines, wrapText("/ "+t.Action, 280, 11)...)
@@ -345,40 +405,31 @@ func transitionLabelLines(s *model.Spec, t model.Transition) []string {
 	return lines
 }
 
-func guardDisplay(t model.Transition) string {
-	if t.GuardLabel != "" {
-		return t.GuardLabel
-	}
-	if t.Guard == nil {
-		return ""
-	}
-	if text, ok := t.Guard.(string); ok {
-		return text
-	}
-	b, err := json.Marshal(t.Guard)
-	if err != nil {
-		return ""
-	}
-	return string(b)
-}
-
 func transitionTitle(s *model.Spec, id string, t model.Transition) string {
 	parts := []string{id}
-	if t.Event == "" {
-		if choice, ok := s.Choices[t.From]; ok {
-			parts = append(parts, "選択: "+choice.Label)
-		}
-		if label := strings.Join(transitionLabelLines(s, t), " "); label != "" {
-			parts = append(parts, label)
-		}
-	} else {
-		parts = append(parts, strings.Join(transitionLabelLines(s, t), " "))
+	if t.Kind == model.KindBranch {
+		parts = append(parts, "ディシジョン: "+s.Label(t.From))
+	}
+	if label := strings.Join(transitionLabelLines(s, t), " "); label != "" {
+		parts = append(parts, label)
 	}
 	return strings.Join(parts, " ")
 }
 
-func nodeHeader(st model.State, id string, width float64) float64 {
-	return 30 + float64(len(wrapText(st.Label, width-30, 14)))*18 + float64(len(wrapText(id+" · "+st.Screen, width-30, 11)))*13
+// screenLine is shown under a state name only when the screen differs from it.
+func screenLine(st model.StateNode) string {
+	if st.Screen == "" || st.Screen == st.Name {
+		return ""
+	}
+	return "画面: " + st.Screen
+}
+
+func nodeHeader(st model.StateNode, width float64) float64 {
+	h := 30 + float64(len(wrapText(st.Name, width-30, 14)))*18
+	if line := screenLine(st); line != "" {
+		h += float64(len(wrapText(line, width-30, 11))) * 13
+	}
+	return h
 }
 func sorted(ids []string) []string {
 	m := map[string]bool{}
@@ -420,11 +471,10 @@ func measure(s string, size float64) float64 {
 	}
 	return n * size
 }
-func draw(s *model.Spec, scope, visible []string, initial []model.Snapshot, layout Layout) (string, error) {
-	starts := map[string]bool{}
-	for _, st := range initial {
-		starts[st.State] = true
-	}
+
+// draw lays out and renders one diagram. starts maps an outer start marker to
+// the vertex it enters.
+func draw(s *model.Spec, scope, visible []string, starts map[string]string, layout Layout) (string, error) {
 	g := graphFor(s, scope, visible, starts)
 	b, err := json.Marshal(g)
 	if err != nil {
@@ -470,27 +520,26 @@ func draw(s *model.Spec, scope, visible []string, initial []model.Snapshot, layo
 			if !finite(n.X) || !finite(n.Y) || !finite(n.Width) || !finite(n.Height) || n.Width <= 0 || n.Height <= 0 {
 				return fmt.Errorf("invalid node bounds")
 			}
-			if state, start := strings.CutPrefix(n.ID, "__start_"); start && starts[state] {
-				fmt.Fprintf(&out, `<g class="start-node" data-start-state="%s" role="img" aria-label="%s" transform="translate(%.2f %.2f)"><title>%s</title><circle cx="%.2f" cy="%.2f" r="%.2f"/></g>`, esc(state), esc("開始: "+s.States[state].Label), n.X, n.Y, esc("開始: "+s.States[state].Label), n.Width/2, n.Height/2, math.Min(n.Width, n.Height)/2)
+			if marker, start := strings.CutPrefix(n.ID, "__start_"); start {
+				title := "開始: " + s.Label(starts[marker])
+				fmt.Fprintf(&out, `<g class="start-node" data-start-state="%s" role="img" aria-label="%s" transform="translate(%.2f %.2f)"><title>%s</title><circle cx="%.2f" cy="%.2f" r="%.2f"/></g>`, esc(starts[marker]), esc(title), n.X, n.Y, esc(title), n.Width/2, n.Height/2, math.Min(n.Width, n.Height)/2)
 				continue
 			}
-			if parent, initial := strings.CutPrefix(n.ID, "__initial_"); initial && s.States[parent].Initial != "" {
-				state := s.States[parent].Initial
-				fmt.Fprintf(&out, `<g class="initial-node" data-parent-state="%s" data-initial-state="%s" role="img" aria-label="%s" transform="translate(%.2f %.2f)"><title>%s</title><circle cx="%.2f" cy="%.2f" r="%.2f"/></g>`, esc(parent), esc(state), esc("内部初期状態: "+s.States[state].Label), n.X, n.Y, esc("内部初期状態: "+s.States[state].Label), n.Width/2, n.Height/2, math.Min(n.Width, n.Height)/2)
+			if parent, initial := strings.CutPrefix(n.ID, "__initial_"); initial {
+				target := s.Transitions[s.States[parent].Start].To
+				title := "開始: " + s.Label(target)
+				fmt.Fprintf(&out, `<g class="initial-node" data-parent-state="%s" data-initial-state="%s" role="img" aria-label="%s" transform="translate(%.2f %.2f)"><title>%s</title><circle cx="%.2f" cy="%.2f" r="%.2f"/></g>`, esc(parent), esc(target), esc(title), n.X, n.Y, esc(title), n.Width/2, n.Height/2, math.Min(n.Width, n.Height)/2)
 				continue
 			}
-			if choice, ok := s.Choices[n.ID]; ok {
-				choiceLabel := choice.Label
-				fmt.Fprintf(&out, `<g class="choice" data-choice="%s" role="img" aria-label="%s" transform="translate(%.2f %.2f)"><title>%s</title><polygon points="%.2f,0 %.2f,%.2f %.2f,%.2f 0,%.2f"/>`, esc(n.ID), esc("選択: "+choiceLabel), n.X, n.Y, esc(choiceLabel), n.Width/2, n.Width, n.Height/2, n.Width/2, n.Height, n.Height/2)
-				lines := wrapText(choiceLabel, n.Width-24, 12)
+			if s.IsDecision(n.ID) {
+				label := s.Label(n.ID)
+				fmt.Fprintf(&out, `<g class="decision" data-decision="%s" role="img" aria-label="%s" transform="translate(%.2f %.2f)"><title>%s</title><polygon points="%.2f,0 %.2f,%.2f %.2f,%.2f 0,%.2f"/>`, esc(n.ID), esc("ディシジョン: "+label), n.X, n.Y, esc(label), n.Width/2, n.Width, n.Height/2, n.Width/2, n.Height, n.Height/2)
+				lines := wrapText(label, n.Width-24, 12)
 				total := float64(len(lines)) * 16
 				y := (n.Height-total)/2 + 12
 				for _, line := range lines {
 					fmt.Fprintf(&out, `<text x="%.2f" y="%.2f" text-anchor="middle">%s</text>`, n.Width/2, y, esc(line))
 					y += 16
-				}
-				if err := nodes(n.Children); err != nil {
-					return err
 				}
 				out.WriteString(`</g>`)
 				continue
@@ -499,24 +548,27 @@ func draw(s *model.Spec, scope, visible []string, initial []model.Snapshot, layo
 			if !ok {
 				return fmt.Errorf("unknown layout state")
 			}
+			composite := len(st.Children) > 0
 			class := "node"
-			if st.Initial != "" {
+			if composite {
 				class += " composite"
 			}
-			fmt.Fprintf(&out, `<g class="%s" data-state="%s" transform="translate(%.2f %.2f)"><title>%s</title><rect width="%.2f" height="%.2f" rx="9"/>`, class, esc(n.ID), n.X, n.Y, esc(s.Screens[st.Screen].Label), n.Width, n.Height)
+			fmt.Fprintf(&out, `<g class="%s" data-state="%s" transform="translate(%.2f %.2f)"><title>%s</title><rect width="%.2f" height="%.2f" rx="9"/>`, class, esc(n.ID), n.X, n.Y, esc(n.ID), n.Width, n.Height)
 			y := 25.0
-			for _, line := range wrapText(st.Label, n.Width-30, 14) {
+			for _, line := range wrapText(st.Name, n.Width-30, 14) {
 				fmt.Fprintf(&out, `<text x="15" y="%.2f">%s</text>`, y, esc(line))
 				y += 18
 			}
-			y += 3
-			for _, line := range wrapText(n.ID+" · "+st.Screen, n.Width-30, 11) {
-				fmt.Fprintf(&out, `<text class="sub" x="15" y="%.2f">%s</text>`, y, esc(line))
-				y += 13
+			if line := screenLine(st); line != "" {
+				y += 3
+				for _, l := range wrapText(line, n.Width-30, 11) {
+					fmt.Fprintf(&out, `<text class="sub" x="15" y="%.2f">%s</text>`, y, esc(l))
+					y += 13
+				}
 			}
 			internal := internalTransitions(s, visible, n.ID)
-			header := nodeHeader(st, n.ID, n.Width)
-			if st.Initial != "" || len(internal) > 0 {
+			header := nodeHeader(st, n.Width)
+			if composite || len(internal) > 0 {
 				fmt.Fprintf(&out, `<line class="state-divider" x1="0" y1="%.2f" x2="%.2f" y2="%.2f"/>`, header, n.Width, header)
 			}
 			y = header + 17
@@ -535,7 +587,7 @@ func draw(s *model.Spec, scope, visible []string, initial []model.Snapshot, layo
 				y += 8
 				out.WriteString(`</g>`)
 			}
-			if st.Initial != "" && len(internal) > 0 {
+			if composite && len(internal) > 0 {
 				bottom := header + internalHeight(s, visible, n.ID, n.Width)
 				fmt.Fprintf(&out, `<line class="state-divider" x1="0" y1="%.2f" x2="%.2f" y2="%.2f"/>`, bottom+6, n.Width, bottom+6)
 			}
@@ -565,21 +617,18 @@ func draw(s *model.Spec, scope, visible []string, initial []model.Snapshot, layo
 		if len(ed.Sections) == 0 {
 			return "", fmt.Errorf("layout returned no route for %s", ed.ID)
 		}
-		if state, start := strings.CutPrefix(ed.ID, "__start_edge_"); start && starts[state] {
-			fmt.Fprintf(&out, `<g class="start-edge" data-start-state="%s"><title>%s</title>`, esc(state), esc("開始: "+s.States[state].Label))
-		} else if parent, initial := strings.CutPrefix(ed.ID, "__initial_edge_"); initial && s.States[parent].Initial != "" {
-			state := s.States[parent].Initial
-			fmt.Fprintf(&out, `<g class="initial-edge" data-parent-state="%s" data-initial-state="%s"><title>%s</title>`, esc(parent), esc(state), esc("内部初期状態: "+s.States[state].Label))
+		t, isTransition := s.Transitions[ed.ID]
+		if marker, start := strings.CutPrefix(ed.ID, "__start_edge_"); start {
+			fmt.Fprintf(&out, `<g class="start-edge" data-start-state="%s"><title>%s</title>`, esc(starts[marker]), esc("開始: "+s.Label(starts[marker])))
+		} else if isTransition && t.Kind == model.KindStart {
+			fmt.Fprintf(&out, `<g class="initial-edge" data-transition="%s" data-parent-state="%s" data-initial-state="%s"><title>%s</title>`, esc(ed.ID), esc(t.From), esc(t.To), esc("開始: "+s.Label(t.To)))
 		} else {
-			t, ok := s.Transitions[ed.ID]
-			if !ok {
+			if !isTransition {
 				return "", fmt.Errorf("layout returned unknown edge")
 			}
 			class := "edge"
-			if t.Event == "" {
-				if _, choice := s.Choices[t.From]; choice {
-					class += " choice-edge"
-				}
+			if t.Kind == model.KindBranch {
+				class += " decision-edge"
 			}
 			if !t.DefaultVisible {
 				class += " transition-hidden"
@@ -641,18 +690,26 @@ type view struct {
 func Build(s *model.Spec, r *model.Report, layout Layout, assets fs.FS) ([]byte, error) {
 	v := view{Name: r.Name, Status: r.Status, Version: r.ToolVersion, Hash: r.InputHash, States: r.ReachableStates, UseCases: len(r.UseCases), Scenarios: len(r.Scenarios)}
 	if s == nil {
-		s = &model.Spec{Document: model.EmptyDocument()}
+		s = model.NewSpec()
 	}
 	variants := map[string]map[string]string{"": {"[]": "system", "*": "system"}}
-	if len(s.States) > 0 && len(s.Transitions) > 0 {
-		diagrams, index, err := buildDiagramVariants(s, r, "", nil, s.Project.Initial, layout)
+	if len(s.States) > 1 && len(s.Transitions) > 0 {
+		rootStart := map[string]string{}
+		if start, ok := s.Transitions[s.States[""].Start]; ok {
+			rootStart["root"] = start.To
+		}
+		diagrams, index, err := buildDiagramVariants(s, r, "", DiagramTransitions(s, nil), rootStart, layout)
 		if err != nil {
 			return nil, err
 		}
 		v.Diagrams = append(v.Diagrams, diagrams...)
 		variants[""] = index
 		for _, id := range model.Keys(s.UseCases) {
-			diagrams, index, err := buildDiagramVariants(s, r, id, s.UseCases[id].Scope, s.UseCases[id].Starts, layout)
+			starts := map[string]string{}
+			for i, start := range s.UseCases[id].Starts {
+				starts[fmt.Sprintf("u%d", i)] = start
+			}
+			diagrams, index, err := buildDiagramVariants(s, r, id, DiagramTransitions(s, s.UseCases[id].Scope), starts, layout)
 			if err != nil {
 				return nil, fmt.Errorf("layout %s: %w", id, err)
 			}
@@ -701,8 +758,8 @@ const page = `<!doctype html>
 <html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="{{.CSP}}"><title>{{.Name}} | ucspec</title><style>{{.CSS}}</style></head>
 <body><header><div class="eyebrow">ucspec / EXECUTABLE USE-CASE SPECIFICATION</div><h1>{{.Name}}</h1><p>目的から仕様へ。共有された振る舞いを、シナリオと検証で確認する。</p></header>
 <div class="layout"><aside><strong>ユースケース構造</strong><div id="nav" class="nav-tree"></div><hr><label for="filter">シナリオを検索</label><input id="filter" class="search" placeholder="シナリオ名"><hr><a href="#coverage">網羅率・未網羅項目</a><br><a id="common-rules-link" href="#common-rules" hidden>共通ルール</a><br><a href="#checks">モデル検査</a><br><a href="#diagnostics">診断</a></aside>
-<main><div class="summary"><div class="stat"><small>検証結果</small><strong class="status {{.Status}}">{{.Status}}</strong></div><div class="stat"><small>到達構成（末端状態＋データ）</small><strong>{{.States}}</strong></div><div class="stat"><small>ユースケース</small><strong>{{.UseCases}}</strong></div><div class="stat"><small>登録シナリオ・回帰ケース</small><strong>{{.Scenarios}}</strong></div></div>
-<div class="notice">ここでの網羅率は<strong>シナリオ定義</strong>の網羅性です。実装のテスト実行結果ではありません。検証済みは、定義した有限モデルと検査条件の範囲に限ります。</div>
+<main><div class="summary"><div class="stat"><small>検証結果</small><strong class="status {{.Status}}">{{.Status}}</strong></div><div class="stat"><small>到達できる末端状態</small><strong>{{.States}}</strong></div><div class="stat"><small>ユースケース</small><strong>{{.UseCases}}</strong></div><div class="stat"><small>登録シナリオ・回帰ケース</small><strong>{{.Scenarios}}</strong></div></div>
+<div class="notice">ここでの網羅率は<strong>シナリオ定義</strong>の網羅性です。実装のテスト実行結果ではありません。検証済みは、定義した状態の構造とシナリオの範囲に限ります。</div>
 <section class="card" id="uc-summary"></section><section class="card"><h2>画面・状態遷移</h2><div class="toolbar"><select id="view-select" aria-label="表示ユースケース"></select><button id="zoom-out" aria-label="縮小">−</button><span id="zoom-label"></span><button id="zoom-in" aria-label="拡大">＋</button><button id="zoom-fit">全体を表示</button><label class="transition-toggle"><input id="show-all-transitions" type="checkbox">全遷移を表示</label><span id="transition-visibility" class="mutedtext small" role="status"></span><span class="mutedtext small">状態・矢印をクリックすると詳細を表示</span></div><div id="graph" class="diagram"></div></section>
 <section class="card" id="detail"><h2>詳細</h2><p class="mutedtext">シナリオ、遷移、未網羅項目、反例を選択してください。</p></section><section class="card" id="coverage"></section>
 <section class="card" id="common-rules" hidden><h2>共通ルール</h2></section><section class="card" id="checks"><h2>モデル検査</h2></section><section class="card" id="diagnostics"><h2>診断</h2></section><section class="card" id="impact"></section>

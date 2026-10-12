@@ -1,201 +1,152 @@
-package compiler
+package compiler_test
 
 import (
-	"github.com/nuitsjp/ucspec/internal/model"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/nuitsjp/ucspec/internal/compiler"
+	"github.com/nuitsjp/ucspec/internal/model"
+	"github.com/nuitsjp/ucspec/internal/testkit"
 )
 
-func TestRejectDuplicateAndTrailingJSON(t *testing.T) {
-	for _, x := range []string{`{"a":1,"a":2}`, `{"a":{"b":1,"b":2}}`, `{} {}`, `[1`} {
-		if err := rejectDuplicateKeys([]byte(x)); err == nil {
-			t.Errorf("accepted %s", x)
+const nested = `{"schemaVersion":"1","start":{"to":"A"},"actors":{"人":{}},
+ "events":{"終了":{"actors":["人"],"to":"A"}},
+ "states":{"A":{"start":{"to":"A1"},"states":{
+  "A1":{"events":{"次":{"actors":["人"],"to":"A2"},
+                  "判定":{"actors":["人"],"action":"確認する","decision":{"label":"結果","branches":{"可":{"to":"A2"},"否":{}}}}}},
+  "A2":{}}}},
+ "usecases":{"u":{"name":"U","goal":"G","actor":"人","starts":["A1"],"ends":["A1:次"],"scope":["A1:次"],"scenarios":{}}}}`
+
+func TestFlattenPathsAndTransitionIDs(t *testing.T) {
+	s := testkit.Compile(t, nested)
+	if d := compiler.Validate(s); len(d) != 0 {
+		t.Fatal(d)
+	}
+	for _, path := range []string{"", "A", "A/A1", "A/A2"} {
+		if _, ok := s.States[path]; !ok {
+			t.Fatalf("missing state %q", path)
 		}
 	}
-	if err := rejectDuplicateKeys([]byte(`{"a":[{"b":1},{"b":2}]}`)); err != nil {
-		t.Fatal(err)
+	if s.States["A/A1"].Parent != "A" || s.States["A/A1"].Name != "A1" || !s.IsLeaf("A/A2") || s.IsLeaf("A") {
+		t.Fatalf("hierarchy: %+v", s.States)
 	}
-}
-func TestUnknownFields(t *testing.T) {
-	var p model.Project
-	err := decode(JSONCodec(), []byte(`{"schemaVersion":"1","typo":true}`), "x.json", "project", &p)
-	if err == nil {
-		t.Fatal("unknown field accepted")
-	}
-}
-func TestCompilerFileEscape(t *testing.T) {
-	d := t.TempDir()
-	p := model.Project{SchemaVersion: "1", Name: "test", Files: []string{"../outside.json"}}
-	os.WriteFile(filepath.Join(d, "project.json"), []byte(model.JSON(p)), 0600)
-	if _, err := Load(filepath.Join(d, "project.json"), JSONCodec()); err == nil {
-		t.Fatal("escape accepted")
-	}
-}
-
-func TestLoadRetainsProjectOnSourceFailure(t *testing.T) {
-	root := t.TempDir()
-	p := model.Project{SchemaVersion: "1", Name: "test", Files: []string{"missing.json"}, Output: "custom-report"}
-	path := filepath.Join(root, "project.json")
-	if err := os.WriteFile(path, []byte(model.JSON(p)), 0600); err != nil {
-		t.Fatal(err)
-	}
-	s, err := Load(path, JSONCodec())
-	if err == nil || s == nil || s.Project.Output != p.Output {
-		t.Fatalf("project configuration lost on source failure: spec=%v error=%v", s, err)
-	}
-}
-func TestMergeDoesNotOverwrite(t *testing.T) {
-	s := &model.Spec{Document: model.EmptyDocument(), Sources: map[string]model.Source{}}
-	d := model.EmptyDocument()
-	d.States["a"] = model.State{Label: "A"}
-	if err := merge(s, d, "a.json"); err != nil {
-		t.Fatal(err)
-	}
-	if err := merge(s, d, "b.json"); err == nil {
-		t.Fatal("duplicate accepted")
-	}
-	if s.Sources["states/a"].File != "a.json" {
-		t.Fatal("source overwritten")
-	}
-}
-func TestRequiredReferences(t *testing.T) {
-	s := &model.Spec{Document: model.EmptyDocument(), Project: model.Project{SchemaVersion: "1", Name: "x", Initial: []model.Snapshot{{State: "missing"}}}}
-	s.Transitions["broken"] = model.Transition{From: "a", To: "b", Event: "e", Action: "act"}
-	ds := Validate(s)
-	errors := 0
-	for _, d := range ds {
-		if d.Severity == "error" {
-			errors++
+	for _, id := range []string{":[開始]", ":終了", "A:[開始]", "A/A1:次", "A/A1:判定", "A/A1:判定>可", "A/A1:判定>否"} {
+		if _, ok := s.Transitions[id]; !ok {
+			t.Fatalf("missing transition %q in %v", id, model.Keys(s.Transitions))
 		}
 	}
-	if errors == 0 {
-		t.Fatal("invalid graph accepted")
+	d := s.Decisions["A/A1:判定?"]
+	if d.Parent != "A" || d.Owner != "A/A1:判定" || len(d.Branches) != 2 || d.Label != "結果" {
+		t.Fatalf("decision: %+v", d)
+	}
+	branch := s.Transitions["A/A1:判定>否"]
+	if branch.Kind != model.KindBranch || branch.From != "A/A1:判定?" || branch.To != "" || branch.Root != "A/A1:判定" {
+		t.Fatalf("staying branch: %+v", branch)
+	}
+	if event := s.Transitions["A/A1:判定"]; event.To != "A/A1:判定?" || event.Action != "確認する" {
+		t.Fatalf("event entering decision: %+v", event)
+	}
+	if u := s.UseCases["u"]; u.Starts[0] != "A/A1" || u.Ends[0] != "A/A1:次" || u.Scope[0] != "A/A1:次" {
+		t.Fatalf("use-case references not resolved: %+v", u)
+	}
+	if leaf, err := s.Enter(""); err != nil || leaf != "A/A1" {
+		t.Fatalf("root start enters %q, %v", leaf, err)
+	}
+	if src := s.Sources["transitions/A/A1:判定>可"]; src.File == "" || !strings.Contains(src.Pointer, "/decision/branches/") {
+		t.Fatalf("branch source: %+v", src)
 	}
 }
 
-func TestCompoundPredicateCannotHideCoverageAtoms(t *testing.T) {
-	x := map[string]any{"not": map[string]any{"and": []any{true, false}}}
-	if atomicShape(x) {
-		t.Fatal("hidden composite accepted")
+func TestReferenceResolution(t *testing.T) {
+	s := testkit.Compile(t, `{"schemaVersion":"1","start":{"to":"X"},"actors":{"人":{}},"states":{
+	 "X":{"start":{"to":"S"},"states":{"S":{"events":{"e":{"actors":["人"],"decision":{"branches":{"a":{},"b":{}}}}}}}},
+	 "Y":{"start":{"to":"S"},"states":{"S":{}}}}}`)
+	if _, err := compiler.ResolveState(s, "S"); err == nil || !strings.Contains(err.Error(), "ambiguous") {
+		t.Fatalf("ambiguous suffix accepted: %v", err)
 	}
-	if !atomicShape(map[string]any{"eq": []any{map[string]any{"var": "role"}, "editor"}}) {
-		t.Fatal("ordinary predicate rejected")
+	if path, err := compiler.ResolveState(s, "X/S"); err != nil || path != "X/S" {
+		t.Fatal(path, err)
 	}
-}
-
-func hierarchicalSpec() *model.Spec {
-	s := &model.Spec{Document: model.EmptyDocument(), Sources: map[string]model.Source{}}
-	s.Project = model.Project{SchemaVersion: "1", Name: "hierarchy", Files: []string{"model.json"}, Output: "artifacts", Initial: []model.Snapshot{{State: "customer"}}}
-	s.Project.Limits.Defaults()
-	s.Screens["customer"] = model.Screen{Label: "Customer"}
-	s.States["customer"] = model.State{Label: "Customer", Screen: "customer", Events: []string{"close"}, Initial: "panel"}
-	s.States["panel"] = model.State{Label: "Panel", Screen: "customer", Events: []string{}, Parent: "customer", Initial: "viewing"}
-	s.States["viewing"] = model.State{Label: "Viewing", Screen: "customer", Events: []string{"ask"}, Parent: "panel"}
-	s.States["confirm"] = model.State{Label: "Confirm", Screen: "customer", Events: []string{"cancel"}, Parent: "customer"}
-	s.States["done"] = model.State{Label: "Done", Screen: "customer", Events: []string{}, Terminal: true}
-	for _, id := range []string{"close", "ask", "cancel"} {
-		s.Events[id] = model.Event{Label: id, Source: "user"}
+	if _, err := compiler.ResolveState(s, "Z"); err == nil {
+		t.Fatal("unknown state accepted")
 	}
-	s.Transitions["close"] = model.Transition{From: "customer", To: "done", Event: "close", Action: "Close customer"}
-	s.Transitions["ask"] = model.Transition{From: "viewing", To: "confirm", Event: "ask", Action: "Ask for confirmation"}
-	s.Transitions["cancel"] = model.Transition{From: "confirm", To: "viewing", Event: "cancel", Action: "Cancel"}
-	s.UseCases["customer"] = model.UseCase{Name: "Customer", Goal: "Close customer", Actor: "user", Starts: []model.Snapshot{{State: "customer"}}, End: map[string]any{"eq": []any{map[string]any{"var": "$state"}, "done"}}, Scope: []string{"close", "ask", "cancel"}, Scenarios: map[string]model.Scenario{}}
-	return s
-}
-
-func TestHierarchyValidation(t *testing.T) {
-	for _, d := range Validate(hierarchicalSpec()) {
-		if d.Severity == "error" {
-			t.Fatalf("valid nested hierarchy rejected: %+v", d)
+	if id, err := compiler.ResolveTransition(s, "X/S:e>a"); err != nil || id != "X/S:e>a" {
+		t.Fatal(id, err)
+	}
+	if id, err := compiler.ResolveTransition(s, "X:[開始]"); err != nil || id != "X:[開始]" {
+		t.Fatal(id, err)
+	}
+	for _, ref := range []string{"X/S", "X/S:none", "X/S:e>c", "Y/S:e"} {
+		if _, err := compiler.ResolveTransition(s, ref); err == nil {
+			t.Fatalf("%s accepted", ref)
 		}
 	}
-	cases := []struct {
-		name, state, message string
-		change               func(*model.State)
-	}{
-		{"unknown parent", "confirm", "unknown parent state missing", func(st *model.State) { st.Parent = "missing" }},
-		{"self parent", "customer", "state cannot be its own parent", func(st *model.State) { st.Parent = "customer" }},
-		{"parent cycle", "customer", "parent hierarchy contains a cycle", func(st *model.State) { st.Parent = "viewing" }},
-		{"missing initial", "customer", "composite state requires an initial direct child", func(st *model.State) { st.Initial = "" }},
-		{"sibling initial", "panel", "initial state must be a direct child", func(st *model.State) { st.Initial = "confirm" }},
-		{"self initial", "customer", "initial state must be a direct child", func(st *model.State) { st.Initial = "customer" }},
-		{"grandchild initial", "customer", "initial state must be a direct child", func(st *model.State) { st.Initial = "viewing" }},
-		{"unknown initial", "customer", "unknown initial state missing", func(st *model.State) { st.Initial = "missing" }},
-		{"leaf initial", "viewing", "leaf state must not define initial", func(st *model.State) { st.Initial = "confirm" }},
-		{"terminal composite", "customer", "composite state must not be terminal", func(st *model.State) { st.Terminal = true }},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			s := hierarchicalSpec()
-			st := s.States[tc.state]
-			tc.change(&st)
-			s.States[tc.state] = st
-			for _, d := range Validate(s) {
-				if d.Subject == "states/"+tc.state && d.Severity == "error" && strings.Contains(d.Message, tc.message) {
-					return
-				}
-			}
-			t.Fatalf("missing hierarchy diagnostic %q", tc.message)
-		})
-	}
 }
 
-func TestNegativeStateLayoutLayerRejected(t *testing.T) {
-	s := hierarchicalSpec()
-	layer := -1
-	st := s.States["customer"]
-	st.LayoutLayer = &layer
-	s.States["customer"] = st
-	for _, d := range Validate(s) {
-		if d.Subject == "states/customer" && d.Severity == "error" && strings.Contains(d.Message, "layoutLayer must be non-negative") {
-			return
-		}
-	}
-	t.Fatal("negative state layout layer accepted")
-}
-
-func TestDecisionTransitionMatchesActiveHierarchy(t *testing.T) {
-	for _, tc := range []struct {
-		name, state, event, transition string
-		valid                          bool
-	}{
-		{"ancestor source", "confirm", "close", "close", true},
-		{"composite entry reaches leaf", "customer", "ask", "ask", true},
-		{"inactive sibling source", "panel", "cancel", "cancel", false},
-		{"different event", "confirm", "cancel", "close", false},
+func TestStructuralProblems(t *testing.T) {
+	usecase := `"usecases":{"u":{"name":"U","goal":"G","actor":"人","starts":["A"],"ends":["A:e"],"scope":["A:e"],"scenarios":{}}}`
+	for name, tc := range map[string]struct{ doc, want string }{
+		"leaf start":        {`{"schemaVersion":"1","start":{"to":"A"},"actors":{"人":{}},"states":{"A":{"start":{"to":"A"},"events":{"e":{"actors":["人"]}}}},` + usecase + `}`, "leaf state must not have a start"},
+		"composite start":   {`{"schemaVersion":"1","start":{"to":"P"},"actors":{"人":{}},"states":{"P":{"states":{"A":{"events":{"e":{"actors":["人"]}}}}}},` + usecase + `}`, "requires a start"},
+		"start stays":       {`{"schemaVersion":"1","start":{"to":"P"},"actors":{"人":{}},"states":{"P":{"start":{"action":"x"},"states":{"A":{"events":{"e":{"actors":["人"]}}}}}},` + usecase + `}`, "start must have a destination"},
+		"start outside":     {`{"schemaVersion":"1","start":{"to":"P"},"actors":{"人":{}},"states":{"P":{"start":{"to":"B"},"states":{"A":{"events":{"e":{"actors":["人"]}}}}},"B":{}},` + usecase + `}`, "must enter a state inside"},
+		"to and decision":   {`{"schemaVersion":"1","start":{"to":"A"},"actors":{"人":{}},"states":{"A":{"events":{"e":{"actors":["人"],"to":"A","decision":{"branches":{"a":{},"b":{}}}}}}},` + usecase + `}`, "exclusive"},
+		"single branch":     {`{"schemaVersion":"1","start":{"to":"A"},"actors":{"人":{}},"states":{"A":{"events":{"e":{"actors":["人"],"decision":{"branches":{"a":{}}}}}}},` + usecase + `}`, "at least two branches"},
+		"bad name":          {`{"schemaVersion":"1","start":{"to":"A"},"actors":{"人":{}},"states":{"A":{"events":{"e":{"actors":["人"]},"x>y":{"actors":["人"]}}}},` + usecase + `}`, "name must be"},
+		"unknown actor":     {`{"schemaVersion":"1","start":{"to":"A"},"actors":{"人":{}},"states":{"A":{"events":{"e":{"actors":["他"]}}}},` + usecase + `}`, "unknown actor 他"},
+		"unknown target":    {`{"schemaVersion":"1","start":{"to":"A"},"actors":{"人":{}},"states":{"A":{"events":{"e":{"actors":["人"],"to":"Z"}}}},` + usecase + `}`, "unknown state"},
+		"missing root":      {`{"schemaVersion":"1","actors":{"人":{}},"states":{"A":{"events":{"e":{"actors":["人"]}}}},` + usecase + `}`, "root requires a start"},
+		"actor scope":       {`{"schemaVersion":"1","start":{"to":"A"},"actors":{"人":{},"他":{}},"states":{"A":{"events":{"e":{"actors":["他"]}}}},` + usecase + `}`, "cannot be raised by"},
+		"end outside scope": {`{"schemaVersion":"1","start":{"to":"A"},"actors":{"人":{}},"states":{"A":{"events":{"e":{"actors":["人"]},"f":{"actors":["人"]}}}},"usecases":{"u":{"name":"U","goal":"G","actor":"人","starts":["A"],"ends":["A:f"],"scope":["A:e"],"scenarios":{}}}}`, "outside the scope"},
+		"regression actor":  {`{"schemaVersion":"1","start":{"to":"A"},"actors":{"人":{}},"states":{"A":{"events":{"e":{"actors":["人"]}}}},` + usecase + `,"regressions":{"r":{"name":"R","goal":"G","expectedOutcome":"O","start":"A","steps":[{"event":"e"}]}}}`, "require a known actor"},
 	} {
-		t.Run(tc.name, func(t *testing.T) {
-			s := hierarchicalSpec()
-			s.Decisions["table"] = model.DecisionTable{State: tc.state, Event: tc.event, Cases: []model.DecisionCase{{Enabled: []string{tc.transition}}}}
-			for _, d := range Validate(s) {
-				if d.Subject == "decisions/table" && strings.Contains(d.Message, "expected transition does not match table state/event") {
-					if tc.valid {
-						t.Fatalf("active hierarchy rejected: %+v", d)
-					}
+		t.Run(name, func(t *testing.T) {
+			s := testkit.Compile(t, tc.doc)
+			found := []string{}
+			for _, d := range compiler.Validate(s) {
+				found = append(found, d.Subject+": "+d.Message)
+				if strings.Contains(d.Message, tc.want) {
 					return
 				}
 			}
-			if !tc.valid {
-				t.Fatal("inactive transition accepted")
-			}
+			t.Fatalf("want %q, got %v", tc.want, found)
 		})
 	}
 }
 
-func TestAncestorTransitionRequiresDirectEventDeclaration(t *testing.T) {
-	s := hierarchicalSpec()
-	st := s.States["customer"]
-	st.Events = []string{}
-	s.States["customer"] = st
-	st = s.States["viewing"]
-	st.Events = append(st.Events, "close")
-	s.States["viewing"] = st
-	for _, d := range Validate(s) {
-		if d.Subject == "transitions/close" && d.Message == "event not declared on source state" {
+func TestNamesThatLookTheSameAreRejected(t *testing.T) {
+	s, err := compiler.FromDocuments(testkit.Project(), map[string]model.Document{"a.json": {SchemaVersion: "1",
+		Start:  &model.Target{To: "A"},
+		Actors: map[string]model.Actor{"人": {}},
+		States: map[string]model.State{"A": {}, "Ａ": {}}}}, func(name string) string { return strings.ReplaceAll(name, "Ａ", "A") })
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, d := range compiler.Validate(s) {
+		if strings.Contains(d.Message, "looks the same") {
 			return
 		}
 	}
-	t.Fatal("child event declaration was accepted for an ancestor transition")
+	t.Fatal("normalization collision accepted")
+}
+
+func TestRootStartAppearsOnceAcrossFiles(t *testing.T) {
+	_, err := testkit.CompileError(`{"schemaVersion":"1","start":{"to":"A"},"states":{"A":{}}}`, `{"schemaVersion":"1","start":{"to":"A"}}`)
+	if err == nil || !strings.Contains(err.Error(), "duplicate root start") {
+		t.Fatalf("duplicate root start: %v", err)
+	}
+	_, err = testkit.CompileError(`{"schemaVersion":"1","states":{"A":{}}}`, `{"schemaVersion":"1","states":{"A":{}}}`)
+	if err == nil || !strings.Contains(err.Error(), "duplicate states/A") {
+		t.Fatalf("duplicate top-level state: %v", err)
+	}
+}
+
+func TestSampleCompilesWithoutProblems(t *testing.T) {
+	s := testkit.Sample(t)
+	if d := compiler.Validate(s); len(d) != 0 {
+		t.Fatal(d)
+	}
+	if got := s.Transitions["顧客管理/顧客編集:設定を選択"]; got.Kind != model.KindEvent || got.To != "顧客管理/顧客編集:設定を選択?" {
+		t.Fatalf("overriding menu event: %+v", got)
+	}
 }

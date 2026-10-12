@@ -2,6 +2,7 @@ package adapters
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/nuitsjp/ucspec/internal/assets"
@@ -49,9 +50,26 @@ func checkActualLayerLayout(t *testing.T, s *model.Spec) {
 	}
 }
 
+func assertInitialRow(t *testing.T, children []report.Shape) {
+	t.Helper()
+	for _, marker := range children {
+		if !strings.HasPrefix(marker.ID, "__start_") && !strings.HasPrefix(marker.ID, "__initial_") {
+			continue
+		}
+		for _, node := range children {
+			if strings.HasPrefix(node.ID, "__start_") || strings.HasPrefix(node.ID, "__initial_") {
+				continue
+			}
+			if marker.Y+marker.Height > node.Y+.01 {
+				t.Fatalf("start %s at %.2f..%.2f is not above %s at %.2f", marker.ID, marker.Y, marker.Y+marker.Height, node.ID, node.Y)
+			}
+		}
+	}
+}
+
 func TestActualELKSampleLayoutLayersIncludingScopedDiagrams(t *testing.T) {
 	s := testkit.Sample(t)
-	for id, want := range map[string]int{"search": 0, "notificationSettings": 0, "view": 1, "edit": 2} {
+	for id, want := range map[string]int{"顧客管理/顧客検索": 0, "顧客管理/顧客閲覧": 1, "顧客管理/顧客編集": 2} {
 		layer := s.States[id].LayoutLayer
 		if layer == nil || *layer != want {
 			t.Fatalf("sample state %s does not specify layer %d", id, want)
@@ -61,22 +79,10 @@ func TestActualELKSampleLayoutLayersIncludingScopedDiagrams(t *testing.T) {
 }
 
 func TestActualELKLayersWithinCompositeState(t *testing.T) {
-	zero, second, fifth := 0, 2, 5
-	s := &model.Spec{Project: model.Project{Initial: []model.Snapshot{{State: "workspace"}}}, Document: model.Document{
-		Screens: map[string]model.Screen{"main": {Label: "Main"}},
-		States: map[string]model.State{
-			"workspace": {Label: "Workspace", Screen: "main", Initial: "ready"},
-			"ready":     {Label: "Ready", Screen: "main", Parent: "workspace", LayoutLayer: &zero},
-			"alternate": {Label: "Alternate", Screen: "main", Parent: "workspace", LayoutLayer: &zero},
-			"next":      {Label: "Next", Screen: "main", Parent: "workspace", LayoutLayer: &second},
-			"last":      {Label: "Last", Screen: "main", Parent: "workspace", LayoutLayer: &fifth},
-		},
-		Events: map[string]model.Event{"go": {Label: "Go", Source: "user"}},
-		Transitions: map[string]model.Transition{
-			"forward": {From: "ready", To: "next", Event: "go"},
-			"finish":  {From: "next", To: "last", Event: "go"},
-			"back":    {From: "last", To: "workspace", Event: "go"},
-		},
-	}}
+	s := testkit.Compile(t, `{"schemaVersion":"1","start":{"to":"作業"},"actors":{"人":{}},"states":{"作業":{"start":{"to":"準備"},"states":{
+	 "準備":{"layoutLayer":0,"events":{"進む":{"actors":["人"],"defaultVisible":true,"to":"次"}}},
+	 "別":{"layoutLayer":0},
+	 "次":{"layoutLayer":2,"events":{"進む":{"actors":["人"],"defaultVisible":true,"to":"最後"}}},
+	 "最後":{"layoutLayer":5,"events":{"戻る":{"actors":["人"],"defaultVisible":true,"to":"作業"}}}}}}}`)
 	checkActualLayerLayout(t, s)
 }

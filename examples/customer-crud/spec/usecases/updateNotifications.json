@@ -2,123 +2,22 @@
   "schemaVersion": "1",
   "usecases": {
     "updateNotifications": {
-      "name": "顧客情報の更新通知を編集する",
+      "name": "顧客情報の更新通知を設定する",
       "package": "settings",
-      "actor": "利用者本人",
-      "goal": "顧客情報の更新通知を編集し、更新結果を確認する",
-      "starts": [
-        {
-          "state": "notificationSettings"
-        },
-        {
-          "state": "notificationSettings",
-          "values": {
-            "notificationEnabled": true
-          }
-        }
-      ],
-      "end": {
-        "eq": [
-          {
-            "var": "notificationOutcome"
-          },
-          "updated"
-        ]
-      },
-      "scope": [
-        "updateNotification"
-      ],
+      "actor": "担当者",
+      "goal": "顧客情報の更新通知をメールで受け取るかを設定する",
+      "starts": ["通知設定"],
+      "ends": ["通知設定:更新"],
+      "scope": ["通知設定:更新"],
       "scenarios": {
-        "enable": {
-          "name": "顧客情報の更新通知を有効にする",
-          "goal": "顧客情報の更新通知をメールで受け取る設定に変更する",
-          "expectedOutcome": "設定画面に留まり、通知を有効にする設定が更新される",
-          "start": {
-            "state": "notificationSettings"
-          },
+        "update": {
+          "name": "顧客情報の更新通知を更新する",
+          "goal": "顧客情報の更新通知をメールで受け取るかを変更する",
+          "expectedOutcome": "設定画面に留まり、選んだ通知設定が更新される",
+          "start": "通知設定",
           "steps": [
-            {
-              "transition": "updateNotification",
-              "input": {
-                "enabled": true
-              }
-            }
-          ],
-          "expect": {
-            "and": [
-              {
-                "eq": [
-                  {
-                    "var": "$state"
-                  },
-                  "notificationSettings"
-                ]
-              },
-              {
-                "eq": [
-                  {
-                    "var": "notificationEnabled"
-                  },
-                  true
-                ]
-              },
-              {
-                "eq": [
-                  {
-                    "var": "notificationOutcome"
-                  },
-                  "updated"
-                ]
-              }
-            ]
-          }
-        },
-        "disable": {
-          "name": "顧客情報の更新通知を無効にする",
-          "goal": "顧客情報の更新通知をメールで受け取らない設定に変更する",
-          "expectedOutcome": "設定画面に留まり、通知を無効にする設定が更新される",
-          "start": {
-            "state": "notificationSettings",
-            "values": {
-              "notificationEnabled": true
-            }
-          },
-          "steps": [
-            {
-              "transition": "updateNotification",
-              "input": {
-                "enabled": false
-              }
-            }
-          ],
-          "expect": {
-            "and": [
-              {
-                "eq": [
-                  {
-                    "var": "$state"
-                  },
-                  "notificationSettings"
-                ]
-              },
-              {
-                "eq": [
-                  {
-                    "var": "notificationEnabled"
-                  },
-                  false
-                ]
-              },
-              {
-                "eq": [
-                  {
-                    "var": "notificationOutcome"
-                  },
-                  "updated"
-                ]
-              }
-            ]
-          }
+            { "event": "更新" }
+          ]
         }
       }
     }

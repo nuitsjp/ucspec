@@ -9,6 +9,7 @@ import (
 	"github.com/nuitsjp/ucspec/internal/compiler"
 	"github.com/santhosh-tekuri/jsonschema/v6"
 	"go.yaml.in/yaml/v3"
+	"golang.org/x/text/unicode/norm"
 	"io"
 	"io/fs"
 	"strings"
@@ -44,7 +45,7 @@ func Codec(assets fs.FS) (compiler.Codec, error) {
 	if err != nil {
 		return compiler.Codec{}, err
 	}
-	return compiler.Codec{Decode: decodeYAML, Validate: func(kind string, doc any) error {
+	return compiler.Codec{Decode: decodeYAML, Normalize: norm.NFKC.String, Validate: func(kind string, doc any) error {
 		if kind == "project" {
 			return project.Validate(doc)
 		}

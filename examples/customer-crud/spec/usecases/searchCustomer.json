@@ -4,229 +4,29 @@
     "searchCustomer": {
       "name": "顧客を検索する",
       "package": "customerManagement",
-      "actor": "editor",
+      "actor": "担当者",
       "goal": "検索条件に一致する顧客の有無を確認する",
-      "starts": [
-        {
-          "state": "search",
-          "values": {
-            "exists": true
-          }
-        },
-        {
-          "state": "search",
-          "values": {
-            "exists": false
-          }
-        }
-      ],
-      "end": {
-        "and": [
-          {
-            "eq": [
-              {
-                "var": "$state"
-              },
-              "search"
-            ]
-          },
-          {
-            "eq": [
-              {
-                "var": "searched"
-              },
-              true
-            ]
-          }
-        ]
-      },
-      "scope": [
-        "searchCustomers",
-        "searchFound",
-        "searchEmpty"
-      ],
+      "starts": ["顧客検索"],
+      "ends": ["顧客検索:検索"],
+      "scope": ["顧客検索:検索"],
       "scenarios": {
         "found": {
           "name": "顧客が見つかる",
           "goal": "検索条件に一致する顧客の有無を確認する",
           "expectedOutcome": "検索画面に対象顧客の一覧を表示し、0件アラートは表示しない",
-          "start": {
-            "state": "search",
-            "values": {
-              "exists": true
-            }
-          },
+          "start": "顧客検索",
           "steps": [
-            {
-              "transition": "searchCustomers"
-            },
-            {
-              "transition": "searchFound",
-              "expect": {
-                "and": [
-                  {
-                    "eq": [
-                      {
-                        "var": "$state"
-                      },
-                      "search"
-                    ]
-                  },
-                  {
-                    "eq": [
-                      {
-                        "var": "searched"
-                      },
-                      true
-                    ]
-                  },
-                  {
-                    "eq": [
-                      {
-                        "var": "searchAlert"
-                      },
-                      false
-                    ]
-                  },
-                  {
-                    "eq": [
-                      {
-                        "var": "outcome"
-                      },
-                      "none"
-                    ]
-                  }
-                ]
-              }
-            }
-          ],
-          "expect": {
-            "and": [
-              {
-                "eq": [
-                  {
-                    "var": "$state"
-                  },
-                  "search"
-                ]
-              },
-              {
-                "eq": [
-                  {
-                    "var": "searched"
-                  },
-                  true
-                ]
-              },
-              {
-                "eq": [
-                  {
-                    "var": "searchAlert"
-                  },
-                  false
-                ]
-              },
-              {
-                "eq": [
-                  {
-                    "var": "outcome"
-                  },
-                  "none"
-                ]
-              }
-            ]
-          }
+            { "event": "検索", "branches": ["1件以上"] }
+          ]
         },
         "empty": {
           "name": "顧客が見つからない",
           "goal": "検索条件に一致する顧客がいないことを確認する",
           "expectedOutcome": "検索画面に留まり、対象が見つからないことを0件アラートで確認できる",
-          "start": {
-            "state": "search",
-            "values": {
-              "exists": false
-            }
-          },
+          "start": "顧客検索",
           "steps": [
-            {
-              "transition": "searchCustomers"
-            },
-            {
-              "transition": "searchEmpty",
-              "expect": {
-                "and": [
-                  {
-                    "eq": [
-                      {
-                        "var": "$state"
-                      },
-                      "search"
-                    ]
-                  },
-                  {
-                    "eq": [
-                      {
-                        "var": "searched"
-                      },
-                      true
-                    ]
-                  },
-                  {
-                    "eq": [
-                      {
-                        "var": "searchAlert"
-                      },
-                      true
-                    ]
-                  },
-                  {
-                    "eq": [
-                      {
-                        "var": "outcome"
-                      },
-                      "empty"
-                    ]
-                  }
-                ]
-              }
-            }
-          ],
-          "expect": {
-            "and": [
-              {
-                "eq": [
-                  {
-                    "var": "$state"
-                  },
-                  "search"
-                ]
-              },
-              {
-                "eq": [
-                  {
-                    "var": "searched"
-                  },
-                  true
-                ]
-              },
-              {
-                "eq": [
-                  {
-                    "var": "searchAlert"
-                  },
-                  true
-                ]
-              },
-              {
-                "eq": [
-                  {
-                    "var": "outcome"
-                  },
-                  "empty"
-                ]
-              }
-            ]
-          }
+            { "event": "検索", "branches": ["0件"] }
+          ]
         }
       }
     }

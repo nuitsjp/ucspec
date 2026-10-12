@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "1",
+  "states": {
+    "設定": {
+      "start": {
+        "to": "通知設定"
+      },
+      "events": {
+        "顧客管理を選択": {
+          "actors": ["担当者", "編集担当者"],
+          "to": "顧客管理"
+        }
+      },
+      "states": {
+        "通知設定": {
+          "events": {
+            "更新": {
+              "actors": ["担当者", "編集担当者"],
+              "defaultVisible": true,
+              "action": "通知設定を更新する"
+            }
+          }
+        }
+      }
+    }
+  }
+}

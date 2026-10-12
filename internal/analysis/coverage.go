@@ -2,21 +2,13 @@ package analysis
 
 import (
 	"fmt"
-	"github.com/nuitsjp/ucspec/internal/model"
 	"sort"
 	"strings"
+
+	"github.com/nuitsjp/ucspec/internal/model"
 )
 
 func pathKey(p []string) string { return strings.Join(p, " > ") }
-func idsOf(steps []model.Step) []string {
-	r := []string{}
-	for _, s := range steps {
-		if !s.Reject {
-			r = append(r, s.Transition)
-		}
-	}
-	return r
-}
 func containsPath(haystack, needle []string) bool {
 	if len(needle) > len(haystack) {
 		return false
@@ -50,33 +42,55 @@ func coverage(kind string, req map[string]model.Requirement, covered map[string]
 	}
 	return c
 }
-func CoverageFor(s *model.Spec, u model.UseCase, g *Graph, sc []model.ScenarioResult) []model.Coverage {
-	paths := [][]string{}
-	observed := []model.Observation{}
-	for _, r := range sc {
-		if r.Valid {
-			paths = append(paths, idsOf(r.Witness.Steps))
-			observed = append(observed, r.GuardObservations...)
+
+// ScopeTransitions lists the transitions a use case is responsible for: the
+// events in its scope, every branch below them, and the branches of start
+// decisions that its graph passes through.
+func ScopeTransitions(s *model.Spec, u model.UseCase, g *Graph) []string {
+	set := map[string]bool{}
+	for _, id := range u.Scope {
+		set[id] = true
+	}
+	for id, t := range s.Transitions {
+		if t.Kind == model.KindBranch && set[t.Root] {
+			set[id] = true
 		}
 	}
-	scope := map[string]bool{}
-	for _, id := range u.Scope {
-		scope[id] = true
+	for _, ed := range g.Edges {
+		if t := s.Transitions[ed.Transition]; t.Kind == model.KindBranch && s.Transitions[t.Root].Kind == model.KindStart {
+			set[ed.Transition] = true
+		}
 	}
+	return model.Keys(set)
+}
+
+func CoverageFor(s *model.Spec, u model.UseCase, g *Graph, sc []model.ScenarioResult) []model.Coverage {
+	paths := [][]string{}
+	for _, r := range sc {
+		if r.Valid {
+			paths = append(paths, r.Witness.Transitions)
+		}
+	}
+	required := map[string]bool{}
 	raw := map[string][][]string{"transitions": {}, "pairs": {}}
-	for _, a := range model.Keys(scope) {
-		raw["transitions"] = append(raw["transitions"], []string{a})
-		after := transitionTargets(s, s.Transitions[a])
-		for _, b := range model.Keys(scope) {
-			for _, state := range after {
-				if s.InState(state, s.Transitions[b].From) {
-					raw["pairs"] = append(raw["pairs"], []string{a, b})
-					break
-				}
+	for _, id := range ScopeTransitions(s, u, g) {
+		required[id] = true
+		raw["transitions"] = append(raw["transitions"], []string{id})
+	}
+	pairs := map[string][]string{}
+	for _, in := range g.Edges {
+		for _, j := range g.Out[in.To] {
+			out := g.Edges[j]
+			if required[in.Transition] && required[out.Transition] {
+				p := []string{in.Transition, out.Transition}
+				pairs[pathKey(p)] = p
 			}
 		}
 	}
-	prime, primeComplete := PrimePaths(s, scope, s.Project.Limits.Paths)
+	for _, k := range model.Keys(pairs) {
+		raw["pairs"] = append(raw["pairs"], pairs[k])
+	}
+	prime, primeComplete := PrimePaths(g, s.Project.Limits.Paths)
 	raw["primePaths"] = prime
 	results := StateCoverage(s, g, sc)
 	for _, kind := range []string{"transitions", "pairs", "primePaths"} {
@@ -106,7 +120,7 @@ func CoverageFor(s *model.Spec, u model.UseCase, g *Graph, sc []model.ScenarioRe
 				}
 			}
 		}
-		c := coverage(kind, req, covered, complete, "Control-state paths; data feasibility checked in the finite execution graph. Infeasible requirements are listed separately. Pairs have exactly two transitions.")
+		c := coverage(kind, req, covered, complete, "Transitions are events and decision branches. Paths that cannot reach a use-case end are listed separately and not counted. Pairs have exactly two transitions.")
 		c.Infeasible = infeasible
 		results = append(results, c)
 	}
@@ -117,22 +131,12 @@ func CoverageFor(s *model.Spec, u model.UseCase, g *Graph, sc []model.ScenarioRe
 			covered[pathKey(p)] = true
 		}
 	}
-	results = append(results, coverage("boundedPaths", bounded, covered, bc, fmt.Sprintf("Complete transition-ID paths up to %d transitions; data variants are merged here and checked by condition metrics separately.", s.Project.Limits.Steps)))
-	for _, kind := range []string{"conditions", "multipleConditions"} {
-		req := observationRequirements(g.Observations, scope, kind)
-		seen := observationRequirements(observed, scope, kind)
-		covered := map[string]bool{}
-		for k := range seen {
-			covered[k] = true
-		}
-		c := coverage(kind, req, covered, g.Complete, "Logical truth of named conditions, at each transition guard evaluation (including false guards). Denominator: reachable state/event/input combinations, not arbitrary Boolean combinations; not runtime short-circuit coverage.")
-		results = append(results, c)
-	}
+	results = append(results, coverage("boundedPaths", bounded, covered, bc, fmt.Sprintf("Complete paths from a start to a use-case end with up to %d transitions.", s.Project.Limits.Steps)))
 	return results
 }
 
-// StateCoverage counts reachable control states, independent of data variants.
-// A reached composite does not imply that any other child has been covered.
+// StateCoverage counts reachable leaf and composite states. A reached composite
+// does not cover its other children.
 func StateCoverage(s *model.Spec, g *Graph, scenarios []model.ScenarioResult) []model.Coverage {
 	covered := map[string]bool{}
 	for _, scenario := range scenarios {
@@ -156,10 +160,7 @@ func StateCoverage(s *model.Spec, g *Graph, scenarios []model.ScenarioResult) []
 		req := map[string]model.Requirement{}
 		complete := g.Complete
 		for _, id := range model.Keys(reachable) {
-			if s.IsChoice(id) {
-				continue
-			}
-			if (s.States[id].Initial != "") != (kind == "compositeStates") {
+			if id == "" || s.IsLeaf(id) == (kind == "compositeStates") {
 				continue
 			}
 			r := model.Requirement{ID: id, State: id}
@@ -170,7 +171,7 @@ func StateCoverage(s *model.Spec, g *Graph, scenarios []model.ScenarioResult) []
 			}
 			req[id] = r
 		}
-		note := "Reachable leaf states in the use-case execution graph; data variants count once. Only valid scenario traces cover a state."
+		note := "Reachable leaf states in the use-case graph. Only valid scenario traces cover a state."
 		if kind == "compositeStates" {
 			note = "Reachable composite states, counted separately from leaves. A parent is active with its child; parent coverage does not cover other children."
 		}
@@ -179,8 +180,7 @@ func StateCoverage(s *model.Spec, g *Graph, scenarios []model.ScenarioResult) []
 	return results
 }
 
-// StateWitness finds a completing scenario that visits a leaf or composite.
-// A missing completion witness does not remove a reachable state from coverage.
+// StateWitness finds a completing path that visits a leaf or composite.
 func StateWitness(s *model.Spec, g *Graph, target string, budget int) (*model.Witness, bool) {
 	type product struct {
 		node    int
@@ -199,7 +199,7 @@ func StateWitness(s *model.Spec, g *Graph, target string, budget int) (*model.Wi
 	for _, n := range g.Starts {
 		visited := s.InState(g.Nodes[n].State.State, target)
 		seen[key(n, visited)] = true
-		queue = append(queue, product{n, visited, model.Witness{Start: g.Nodes[n].State, Steps: []model.Step{}}})
+		queue = append(queue, product{n, visited, g.Nodes[n].Witness})
 	}
 	for i := 0; i < len(queue); i++ {
 		p := queue[i]
@@ -220,61 +220,20 @@ func StateWitness(s *model.Spec, g *Graph, target string, budget int) (*model.Wi
 				return nil, false
 			}
 			seen[k] = true
-			queue = append(queue, product{ed.To, visited, extend(p.w, ed.Step)})
+			queue = append(queue, product{ed.To, visited, extend(p.w, ed.Transition)})
 		}
 	}
 	return nil, g.Complete
 }
-func observationRequirements(obs []model.Observation, scope map[string]bool, kind string) map[string]model.Requirement {
-	r := map[string]model.Requirement{}
-	for _, o := range obs {
-		if !scope[o.Transition] || len(o.Atoms) == 0 {
-			continue
-		}
-		if kind == "conditions" {
-			for _, a := range model.Keys(o.Atoms) {
-				k := fmt.Sprintf("%s / %s=%t", o.Transition, a, o.Atoms[a])
-				r[k] = model.Requirement{ID: k}
-			}
-		} else {
-			parts := []string{}
-			for _, a := range model.Keys(o.Atoms) {
-				parts = append(parts, fmt.Sprintf("%s=%t", a, o.Atoms[a]))
-			}
-			k := o.Transition + " / " + strings.Join(parts, ", ")
-			r[k] = model.Requirement{ID: k}
-		}
-	}
-	return r
-}
 
-// PrimePaths enumerates maximal simple paths. A cycle may repeat ONLY its first
-// vertex at its end. Distinct rotations of a cycle remain distinct requirements.
-func PrimePaths(s *model.Spec, scope map[string]bool, budget int) ([][]string, bool) {
-	type arc struct{ id, to string }
-	out := map[string][]arc{}
-	vertices := map[string]bool{}
-	for _, id := range model.Keys(scope) {
-		t := s.Transitions[id]
-		targets := transitionTargets(s, t)
-		for _, from := range s.Leaves(t.From) {
-			if t.Kind == "internal" {
-				targets = []string{from}
-			}
-			for _, to := range targets {
-				out[from] = append(out[from], arc{id, to})
-			}
-			vertices[from] = true
-		}
-		for _, to := range transitionTargets(s, t) {
-			vertices[to] = true
-		}
-	}
+// PrimePaths enumerates maximal simple paths of the graph by transition ID. A
+// cycle may repeat ONLY its first vertex at its end.
+func PrimePaths(g *Graph, budget int) ([][]string, bool) {
 	all := map[string][]string{}
 	work := 0
 	complete := true
-	var dfs func(string, string, map[string]bool, []string)
-	dfs = func(start, at string, seen map[string]bool, path []string) {
+	var dfs func(start, at int, seen map[int]bool, path []string)
+	dfs = func(start, at int, seen map[int]bool, path []string) {
 		if !complete {
 			return
 		}
@@ -284,26 +243,25 @@ func PrimePaths(s *model.Spec, scope map[string]bool, budget int) ([][]string, b
 			return
 		}
 		if len(path) > 0 {
-			key := pathKey(path)
-			all[key] = append([]string{}, path...)
+			all[pathKey(path)] = append([]string{}, path...)
 		}
-		for _, edge := range out[at] {
-			to := edge.to
-			p := append(append([]string{}, path...), edge.id)
-			if to == start {
+		for _, ei := range g.Out[at] {
+			edge := g.Edges[ei]
+			p := append(append([]string{}, path...), edge.Transition)
+			if edge.To == start {
 				all[pathKey(p)] = p
 				continue
 			}
-			if seen[to] {
+			if seen[edge.To] {
 				continue
 			}
-			seen[to] = true
-			dfs(start, to, seen, p)
-			delete(seen, to)
+			seen[edge.To] = true
+			dfs(start, edge.To, seen, p)
+			delete(seen, edge.To)
 		}
 	}
-	for _, v := range model.Keys(vertices) {
-		dfs(v, v, map[string]bool{v: true}, nil)
+	for v := range g.Nodes {
+		dfs(v, v, map[int]bool{v: true}, nil)
 		if !complete {
 			break
 		}
@@ -343,6 +301,8 @@ func PrimePaths(s *model.Spec, scope map[string]bool, budget int) ([][]string, b
 	sort.Slice(prime, func(i, j int) bool { return pathKey(prime[i]) < pathKey(prime[j]) })
 	return prime, complete
 }
+
+// Bounded enumerates complete paths from a start to a use-case end.
 func Bounded(g *Graph, maxSteps, budget int) (map[string]model.Requirement, bool) {
 	req := map[string]model.Requirement{}
 	work := 0
@@ -355,14 +315,13 @@ func Bounded(g *Graph, maxSteps, budget int) (map[string]model.Requirement, bool
 			return
 		}
 		if g.Nodes[n].Terminal {
-			p := idsOf(w.Steps)
-			k := pathKey(p)
+			k := pathKey(w.Transitions)
 			if _, ok := req[k]; !ok {
-				req[k] = model.Requirement{ID: k, Path: p, Witness: copyWitness(w)}
+				req[k] = model.Requirement{ID: k, Path: append([]string{}, w.Transitions...), Witness: copyWitness(w)}
 			}
 			return
 		}
-		if len(w.Steps) >= maxSteps {
+		if len(w.Transitions) >= maxSteps {
 			return
 		}
 		for _, i := range g.Out[n] {
@@ -371,7 +330,7 @@ func Bounded(g *Graph, maxSteps, budget int) (map[string]model.Requirement, bool
 				return
 			}
 			ed := g.Edges[i]
-			visit(ed.To, extend(w, ed.Step))
+			visit(ed.To, extend(w, ed.Transition))
 		}
 	}
 	for _, n := range g.Starts {
@@ -379,7 +338,7 @@ func Bounded(g *Graph, maxSteps, budget int) (map[string]model.Requirement, bool
 			complete = false
 			break
 		}
-		visit(n, model.Witness{Start: g.Nodes[n].State, Steps: []model.Step{}})
+		visit(n, g.Nodes[n].Witness)
 	}
 	return req, complete
 }

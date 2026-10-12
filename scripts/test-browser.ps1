@@ -25,10 +25,10 @@ $project = Join-Path $fixture 'spec/project.json'
 if ($LASTEXITCODE -ne 0) { throw 'Review fixture baseline failed.' }
 $fixtureOutput = Join-Path $fixture 'artifacts/ucspec'
 $baseline = [IO.File]::ReadAllText((Join-Path $fixtureOutput 'report.json'), $utf8) | ConvertFrom-Json
-$usecase = $baseline.usecases | Where-Object id -eq 'editCustomer'
+$usecase = $baseline.usecases | Where-Object id -eq 'viewCustomer'
 $missing = @(($usecase.coverage | Where-Object kind -eq 'boundedPaths').missing)
 if ($missing.Count -lt 5) { throw 'Review fixture requires at least five missing paths.' }
-$source = Join-Path $fixture 'spec/usecases/editCustomer.json'
+$source = Join-Path $fixture 'spec/usecases/viewCustomer.json'
 $document = [IO.File]::ReadAllText($source, $utf8) | ConvertFrom-Json
 $reviews = [ordered]@{}
 foreach ($status in @('addScenario','represented','forbidden')) {
@@ -41,19 +41,19 @@ foreach ($status in @('addScenario','represented','forbidden')) {
         basisHash = $usecase.reviewBasisHash
     }
     if ($status -eq 'represented') {
-        $review.scenario = 'update'
+        $review.scenario = 'view'
         $review.architectureRequirements = @('The represented paths must preserve the same user outcome; fixture requirement, not an implementation guarantee.')
         $review.requirements += $missing[3].id
     }
     $reviews[$status] = $review
 }
-$document.usecases.editCustomer | Add-Member -NotePropertyName coverageReviews -NotePropertyValue $reviews -Force
+$document.usecases.viewCustomer | Add-Member -NotePropertyName coverageReviews -NotePropertyValue $reviews -Force
 [IO.File]::WriteAllText($source, ($document | ConvertTo-Json -Depth 100), $utf8)
 & $exe build --project $project | Out-Null
 if ($LASTEXITCODE -ne 0) { throw 'Review fixture build failed.' }
 $reviewHTML = $utf8.GetString([IO.File]::ReadAllBytes((Join-Path $fixtureOutput 'index.html')))
 # Change intent while preserving paths: historical judgments must become stale.
-$document.usecases.editCustomer.scenarios.update.goal += ' (changed review context)'
+$document.usecases.viewCustomer.scenarios.view.goal += ' (changed review context)'
 [IO.File]::WriteAllText($source, ($document | ConvertTo-Json -Depth 100), $utf8)
 & $exe build --project $project | Out-Null
 if ($LASTEXITCODE -ne 0) { throw 'Stale review fixture build failed.' }
@@ -67,22 +67,39 @@ $inputs = @{
 $code = [IO.File]::ReadAllText((Join-Path $PSScriptRoot 'browser-smoke.js'), $utf8).Replace('__INPUTS__', $inputs)
 [IO.File]::WriteAllText((Join-Path $work 'smoke.js'), $code, $utf8)
 $session = 'ucspec-' + [guid]::NewGuid().ToString('N')
+# `open` starts a session daemon that inherits the caller's standard handles. A
+# pipe would therefore never reach end-of-file, so output goes to a new file per
+# call (the daemon keeps the handle of the `open` output open), which is read with
+# sharing allowed. Only the CLI process itself is awaited; Start-Process -Wait
+# would also await the daemon.
+$cliCall = 0
+function Invoke-PlaywrightCli([string[]]$Arguments) {
+    $script:cliCall++
+    $stdout = Join-Path $work "cli-$($script:cliCall)-stdout.txt"
+    $stderr = Join-Path $work "cli-$($script:cliCall)-stderr.txt"
+    $quoted = @($cli) + $Arguments | ForEach-Object { '"' + $_ + '"' }
+    $process = Start-Process -FilePath 'node' -ArgumentList $quoted -WorkingDirectory $work -NoNewWindow -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+    $process.WaitForExit()
+    $stream = [IO.File]::Open($stdout, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::ReadWrite)
+    try { $text = [IO.StreamReader]::new($stream, $utf8).ReadToEnd() } finally { $stream.Dispose() }
+    [pscustomobject]@{ ExitCode = $process.ExitCode; Output = ($text | ConvertFrom-Json) }
+}
 $result = [pscustomobject]@{ passed = $false; checks = @(); errors = @() }
 Push-Location $work
 try {
-    $opened = (& node $cli "-s=$session" open about:blank --browser=msedge --json | Out-String) | ConvertFrom-Json
-    if ($LASTEXITCODE -ne 0 -or $opened.isError) { throw "Browser startup failed: $($opened.error)" }
-    $run = (& node $cli "-s=$session" run-code --filename=smoke.js --json | Out-String) | ConvertFrom-Json
+    $opened = Invoke-PlaywrightCli @("-s=$session", 'open', 'about:blank', '--browser=msedge', '--json')
+    if ($opened.ExitCode -ne 0 -or $opened.Output.isError) { throw "Browser startup failed: $($opened.Output.error)" }
+    $run = Invoke-PlaywrightCli @("-s=$session", 'run-code', '--filename=smoke.js', '--json')
     # playwright-cli can return exit code 0 together with isError=true.
-    if ($LASTEXITCODE -ne 0 -or $run.isError -or -not $run.result) { throw "Browser test execution failed: $($run.error)" }
-    $result = $run.result | ConvertFrom-Json
+    if ($run.ExitCode -ne 0 -or $run.Output.isError -or -not $run.Output.result) { throw "Browser test execution failed: $($run.Output.error)" }
+    $result = $run.Output.result | ConvertFrom-Json
 } catch {
     $result.passed = $false
     $result.errors += $_.Exception.Message
 } finally {
     try {
-        $closed = (& node $cli "-s=$session" close --json | Out-String) | ConvertFrom-Json
-        if ($LASTEXITCODE -ne 0 -or $closed.isError) { throw "Browser cleanup failed: $($closed.error)" }
+        $closed = Invoke-PlaywrightCli @("-s=$session", 'close', '--json')
+        if ($closed.ExitCode -ne 0 -or $closed.Output.isError) { throw "Browser cleanup failed: $($closed.Output.error)" }
     } catch {
         $result.passed = $false
         $result.errors += $_.Exception.Message

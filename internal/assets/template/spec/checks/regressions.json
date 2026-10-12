@@ -1,0 +1,96 @@
+{
+  "schemaVersion": "1",
+  "regressions": {
+    "customerEditNavigation": {
+      "name": "顧客編集中の移動を中止すると入力を保持し、了承すると破棄する",
+      "goal": "未更新の顧客編集を保持するか破棄するかを選んで機能を切り替える",
+      "expectedOutcome": "移動を中止した間は編集画面と入力を保持し、破棄に同意した場合だけ移動する",
+      "actor": "編集担当者",
+      "start": "顧客検索",
+      "steps": [
+        { "event": "検索", "branches": ["1件以上"] },
+        { "event": "閲覧", "branches": ["顧客あり"] },
+        { "event": "編集" },
+        { "event": "設定を選択", "branches": ["取り消す"] },
+        { "event": "顧客管理を選択", "branches": ["取り消す"] },
+        { "event": "設定を選択", "branches": ["破棄する"] },
+        { "event": "顧客管理を選択" }
+      ]
+    },
+    "settingsNavigation": {
+      "name": "顧客管理と設定を切り替える",
+      "goal": "メニューから設定を開き、顧客管理へ戻る",
+      "expectedOutcome": "通知設定画面を表示した後、顧客検索画面へ戻る",
+      "actor": "担当者",
+      "start": "顧客検索",
+      "steps": [
+        { "event": "設定を選択" },
+        { "event": "顧客管理を選択" }
+      ]
+    },
+    "viewToSettings": {
+      "name": "顧客閲覧から設定へ移動して戻る",
+      "goal": "顧客閲覧と通知設定を切り替えても顧客情報を維持する",
+      "expectedOutcome": "設定から戻ると顧客検索画面を表示し、顧客情報は変更されない",
+      "actor": "担当者",
+      "start": "顧客検索",
+      "steps": [
+        { "event": "検索", "branches": ["1件以上"] },
+        { "event": "閲覧", "branches": ["顧客あり"] },
+        { "event": "設定を選択" },
+        { "event": "顧客管理を選択" }
+      ]
+    },
+    "notificationThenCustomer": {
+      "name": "顧客情報の更新通知を更新してから顧客を閲覧する",
+      "goal": "通知設定を更新した後に顧客情報を確認する",
+      "expectedOutcome": "更新した通知設定を維持し、対象顧客を検索して閲覧できる",
+      "actor": "担当者",
+      "start": "顧客検索",
+      "steps": [
+        { "event": "設定を選択" },
+        { "event": "更新" },
+        { "event": "顧客管理を選択" },
+        { "event": "検索", "branches": ["1件以上"] },
+        { "event": "閲覧", "branches": ["顧客あり"] }
+      ]
+    },
+    "deleteThenSearch": {
+      "name": "削除後に検索すると対象が見つからない",
+      "goal": "削除した顧客が再検索で見つからないことを確認する",
+      "expectedOutcome": "削除後に検索しても対象顧客は見つからず、0件アラートを表示する",
+      "actor": "編集担当者",
+      "start": "顧客検索",
+      "steps": [
+        { "event": "検索", "branches": ["1件以上"] },
+        { "event": "閲覧", "branches": ["顧客あり"] },
+        { "event": "削除", "branches": ["はい"] },
+        { "event": "検索", "branches": ["0件"] }
+      ]
+    },
+    "readerCannotEdit": {
+      "name": "担当者は顧客を編集できない",
+      "goal": "編集権限のない担当者による顧客情報の編集を防ぐ",
+      "expectedOutcome": "編集は受け付けられず、顧客閲覧画面と元の顧客情報が維持される",
+      "actor": "担当者",
+      "start": "顧客検索",
+      "steps": [
+        { "event": "検索", "branches": ["1件以上"] },
+        { "event": "閲覧", "branches": ["顧客あり"] },
+        { "event": "編集", "reject": true }
+      ]
+    },
+    "readerCannotDelete": {
+      "name": "担当者は顧客を削除できない",
+      "goal": "削除権限のない担当者による顧客情報の削除を防ぐ",
+      "expectedOutcome": "削除は受け付けられず、顧客閲覧画面と対象顧客の情報が維持される",
+      "actor": "担当者",
+      "start": "顧客検索",
+      "steps": [
+        { "event": "検索", "branches": ["1件以上"] },
+        { "event": "閲覧", "branches": ["顧客あり"] },
+        { "event": "削除", "reject": true }
+      ]
+    }
+  }
+}

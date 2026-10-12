@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ucspec 状態定義モデル</title>
+<style>
+:root {
+  --paper: #f6f8fa;
+  --sheet: #ffffff;
+  --ink: #17293a;
+  --muted: #566a7b;
+  --rule: #c9d4de;
+  --state: #146e80;
+  --state-soft: #e3f0f2;
+  --decision: #9a6412;
+  --decision-soft: #fbf1df;
+  --data: #4b5d6e;
+  --data-soft: #edf1f5;
+  --note: #fffbe8;
+  --note-line: #c9b675;
+  --font-body: "BIZ UDPGothic", "Yu Gothic UI", "Hiragino Sans", "Meiryo", system-ui, sans-serif;
+  --font-mono: "BIZ UDGothic", Consolas, "MS Gothic", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0f1820; --sheet: #15212b; --ink: #dfe8ef; --muted: #9db0bf; --rule: #2f4252;
+    --state: #5cc0d1; --state-soft: #173842; --decision: #e0a54a; --decision-soft: #3a2c14;
+    --data: #a9bccb; --data-soft: #1d2b36; --note: #2b2716; --note-line: #7d6f3a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0f1820; --sheet: #15212b; --ink: #dfe8ef; --muted: #9db0bf; --rule: #2f4252;
+  --state: #5cc0d1; --state-soft: #173842; --decision: #e0a54a; --decision-soft: #3a2c14;
+  --data: #a9bccb; --data-soft: #1d2b36; --note: #2b2716; --note-line: #7d6f3a;
+  color-scheme: dark;
+}
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.75; }
+a { color: var(--state); }
+.wrap { max-width: 1120px; margin: 0 auto; padding-inline: 16px; padding-block: 32px 64px; display: grid; gap: 40px; }
+header { display: grid; gap: 8px; }
+.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: .08em; color: var(--muted); }
+h1 { margin: 0; font-size: 28px; line-height: 1.35; text-wrap: balance; }
+h2 { margin: 0 0 12px; font-size: 19px; text-wrap: balance; }
+h3 { margin: 8px 0 0; font-size: 16px; }
+p { margin: 0; max-width: 68ch; }
+section { display: grid; gap: 12px; min-width: 0; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 14px; height: 14px; border-radius: 3px; border: 1.5px solid; display: inline-block; }
+.figure { background: var(--sheet); border: 1px solid var(--rule); border-radius: 6px; overflow-x: auto; padding: 12px; }
+.figure svg { display: block; width: 100%; max-width: 980px; min-width: 820px; height: auto; margin: 0 auto; }
+svg text { font-family: var(--font-body); fill: var(--ink); }
+svg .attr { font-family: var(--font-mono); font-size: 12.5px; fill: var(--ink); }
+svg .title { font-size: 15px; font-weight: 700; }
+svg .mult { font-family: var(--font-mono); font-size: 12px; fill: var(--muted); }
+svg .notetext { font-size: 12.5px; fill: var(--ink); }
+svg .edge { stroke: var(--muted); stroke-width: 1.4; fill: none; }
+svg .dash { stroke-dasharray: 4 3; }
+.tablewrap { overflow-x: auto; background: var(--sheet); border: 1px solid var(--rule); border-radius: 6px; }
+table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 14px; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font-size: 12px; letter-spacing: .06em; color: var(--muted); font-weight: 700; }
+tr:last-child td { border-bottom: 0; }
+code, pre { font-family: var(--font-mono); }
+td code, li code, p code { font-size: 13px; background: var(--data-soft); padding: 1px 6px; border-radius: 4px; white-space: nowrap; }
+pre { margin: 0; background: var(--sheet); border: 1px solid var(--rule); border-radius: 6px; padding: 16px 18px; overflow-x: auto; font-size: 13px; line-height: 1.6; }
+.cols { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 24px; }
+@media (max-width: 860px) { .cols { grid-template-columns: minmax(0, 1fr); } }
+.stack { display: grid; gap: 8px; align-content: start; min-width: 0; }
+.list { margin: 0; padding-left: 1.2em; display: grid; gap: 8px; max-width: 72ch; }
+.list b { font-weight: 700; }
+.small { font-size: 13px; color: var(--muted); }
+.class { display: grid; gap: 8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">ucspec / spec/model/*.json</div>
+    <h1>状態定義ファイルの要素と関係</h1>
+    <p>状態・イベント・ディシジョン・分岐の構造だけで仕様を書きます。変数や条件式などのデータの層は持たず、イベント・開始・分岐が共通の「遷移」を継承します。図の各箱が状態定義ファイルに書く要素、ひし形付きの線が「その中に書く」所有関係です。書き方の詳細は <a href="authoring.md">記述ガイド</a> を参照してください。</p>
+  </header>
+
+  <section aria-labelledby="h-diagram">
+    <h2 id="h-diagram">クラス図</h2>
+    <div class="legend">
+      <span><i class="sw" style="border-color:var(--state);background:var(--state-soft)"></i>状態・イベント</span>
+      <span><i class="sw" style="border-color:var(--decision);background:var(--decision-soft)"></i>ディシジョン・分岐</span>
+      <span><i class="sw" style="border-color:var(--data);background:var(--data-soft)"></i>ファイル・アクター</span>
+      <span>◆ コンポジション（中に書く）　→ 関連（名称で参照）　▷ 汎化（継承）</span>
+    </div>
+    <div class="figure"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 880" role="img" aria-label="状態定義ファイルのクラス図">
+<polyline points="420,45 620,45" class="edge"/>
+<polygon points="420,45 428,50 436,45 428,40" fill="var(--ink)" stroke="var(--ink)" stroke-width="1"/>
+<text x="614" y="38" class="mult" text-anchor="end">0..*</text>
+<polyline points="250,86 250,150" class="edge"/>
+<polygon points="250,86 245,94 250,102 255,94" fill="var(--ink)" stroke="var(--ink)" stroke-width="1"/>
+<text x="258" y="142" class="mult" text-anchor="start">ルート 1</text>
+<polyline points="420,215 452,215 452,248 420,248" class="edge"/>
+<polygon points="420,215 428,220 436,215 428,210" fill="var(--ink)" stroke="var(--ink)" stroke-width="1"/>
+<text x="458" y="264" class="mult" text-anchor="start">子 0..*</text>
+<polyline points="250,256 250,430" class="edge"/>
+<polygon points="250,256 245,264 250,272 255,264" fill="var(--ink)" stroke="var(--ink)" stroke-width="1"/>
+<text x="258" y="422" class="mult" text-anchor="start">0..*</text>
+<polyline points="400,256 400,290 630,290 630,430" class="edge"/>
+<polygon points="400,256 395,264 400,272 405,264" fill="var(--ink)" stroke="var(--ink)" stroke-width="1"/>
+<text x="638" y="422" class="mult" text-anchor="start">0..1</text>
+<polyline points="250,536 250,580 880,580 880,496" class="edge"/>
+<polyline points="630,496 630,580" class="edge"/>
+<polyline points="550,580 550,620" class="edge"/>
+<polygon points="542,606 550,620 558,606" fill="var(--sheet)" stroke="var(--muted)" stroke-width="1.4"/>
+<polyline points="460,686 460,720 40,720 40,240 80,240" class="edge"/>
+<polyline points="70,245 80,240 70,235" class="edge"/>
+<text x="46" y="600" class="mult" text-anchor="start">行き先 0..1</text>
+<polyline points="640,686 640,813 700,813" class="edge"/>
+<polygon points="640,686 635,694 640,702 645,694" fill="var(--ink)" stroke="var(--ink)" stroke-width="1"/>
+<text x="694" y="805" class="mult" text-anchor="end">0..1</text>
+<polyline points="940,813 1020,813 1020,463 990,463" class="edge"/>
+<polygon points="940,813 948,818 956,813 948,808" fill="var(--ink)" stroke="var(--ink)" stroke-width="1"/>
+<text x="996" y="455" class="mult" text-anchor="start">2..*</text>
+<polyline points="460,705 640,705" class="edge dash"/>
+<text x="550" y="700" class="mult" text-anchor="middle">{xor}</text>
+<polyline points="640,180 420,180" class="edge dash"/>
+<polyline points="400,770 400,686" class="edge dash"/>
+<rect x="80" y="20" width="340" height="66" rx="4" fill="var(--sheet)" stroke="var(--data)" stroke-width="1.6"/>
+<rect x="80" y="20" width="340" height="30" rx="4" fill="var(--data-soft)" stroke="var(--data)" stroke-width="1.6"/>
+<text x="250" y="40" text-anchor="middle" class="title">状態定義ファイル</text>
+<text x="92" y="70" class="attr">schemaVersion: &quot;1&quot;</text>
+<rect x="620" y="20" width="260" height="86" rx="4" fill="var(--sheet)" stroke="var(--data)" stroke-width="1.6"/>
+<rect x="620" y="20" width="260" height="30" rx="4" fill="var(--data-soft)" stroke="var(--data)" stroke-width="1.6"/>
+<text x="750" y="40" text-anchor="middle" class="title">アクター</text>
+<text x="632" y="70" class="attr">名称: 文字列 «一意»</text>
+<text x="632" y="90" class="attr">説明: 文字列 [0..1]</text>
+<rect x="80" y="150" width="340" height="106" rx="4" fill="var(--sheet)" stroke="var(--state)" stroke-width="1.6"/>
+<rect x="80" y="150" width="340" height="30" rx="4" fill="var(--state-soft)" stroke="var(--state)" stroke-width="1.6"/>
+<text x="250" y="170" text-anchor="middle" class="title">状態</text>
+<text x="92" y="200" class="attr">名称: 文字列 «同じ親の中で一意»</text>
+<text x="92" y="220" class="attr">画面: 文字列 [0..1]</text>
+<text x="92" y="240" class="attr">配置層: 整数 [0..1]</text>
+<rect x="80" y="430" width="340" height="106" rx="4" fill="var(--sheet)" stroke="var(--state)" stroke-width="1.6"/>
+<rect x="80" y="430" width="340" height="30" rx="4" fill="var(--state-soft)" stroke="var(--state)" stroke-width="1.6"/>
+<text x="250" y="450" text-anchor="middle" class="title">イベント</text>
+<text x="92" y="480" class="attr">名称: 文字列 «状態の中で一意»</text>
+<text x="92" y="500" class="attr">アクター: アクター [1..*]</text>
+<text x="92" y="520" class="attr">通常表示: 真偽</text>
+<rect x="520" y="430" width="220" height="66" rx="4" fill="var(--sheet)" stroke="var(--state)" stroke-width="1.6"/>
+<rect x="520" y="430" width="220" height="30" rx="4" fill="var(--state-soft)" stroke="var(--state)" stroke-width="1.6"/>
+<text x="630" y="450" text-anchor="middle" class="title">開始</text>
+<text x="532" y="480" class="attr">«行き先かディシジョンが必須»</text>
+<rect x="770" y="430" width="220" height="66" rx="4" fill="var(--sheet)" stroke="var(--decision)" stroke-width="1.6"/>
+<rect x="770" y="430" width="220" height="30" rx="4" fill="var(--decision-soft)" stroke="var(--decision)" stroke-width="1.6"/>
+<text x="880" y="450" text-anchor="middle" class="title">分岐</text>
+<text x="782" y="480" class="attr">名称 «ディシジョン内で一意»</text>
+<rect x="380" y="620" width="340" height="66" rx="4" fill="var(--sheet)" stroke="var(--state)" stroke-width="1.6"/>
+<rect x="380" y="620" width="340" height="30" rx="4" fill="var(--state-soft)" stroke="var(--state)" stroke-width="1.6"/>
+<text x="550" y="640" text-anchor="middle" class="title" font-style="italic">遷移 «抽象»</text>
+<text x="392" y="670" class="attr">アクション: 文字列</text>
+<rect x="700" y="780" width="240" height="66" rx="4" fill="var(--sheet)" stroke="var(--decision)" stroke-width="1.6"/>
+<rect x="700" y="780" width="240" height="30" rx="4" fill="var(--decision-soft)" stroke="var(--decision)" stroke-width="1.6"/>
+<text x="820" y="800" text-anchor="middle" class="title">ディシジョン</text>
+<text x="712" y="830" class="attr">表示名: 文字列 «重複可»</text>
+<polygon points="640,140 930,140 940,150 940,289 640,289" fill="var(--note)" stroke="var(--note-line)" stroke-width="1.2"/>
+<text x="650" y="162" class="notetext">ファイルの最上位は名前のないルート状態で、</text>
+<text x="650" y="181" class="notetext">最上位の状態はその子になる。</text>
+<text x="650" y="200" class="notetext">子状態は親のイベントを引き継ぐ。</text>
+<text x="650" y="219" class="notetext">どの子状態にいても親のイベントは発火する。</text>
+<text x="650" y="238" class="notetext">子に同名のイベントがあれば、</text>
+<text x="650" y="257" class="notetext">子のイベントが優先する。</text>
+<text x="650" y="276" class="notetext">子を持つ状態は開始が必須。</text>
+<polygon points="80,770 410,770 420,780 420,862 80,862" fill="var(--note)" stroke="var(--note-line)" stroke-width="1.2"/>
+<text x="90" y="792" class="notetext">行き先もディシジョンも持たない遷移は、</text>
+<text x="90" y="811" class="notetext">その状態に留まる（開始では不可）。</text>
+<text x="90" y="830" class="notetext">分岐は名前だけを持ち、どれを通るかは</text>
+<text x="90" y="849" class="notetext">シナリオが指定する。</text>
+</svg></div>
+    <p class="small">［0..*］などは個数、« » は制約です。点線で結んだ {xor} は、結ばれた2本の関係のうち多くとも一方だけを持つことを表します。イベント・開始・分岐は、どれも抽象クラス「遷移」を継承し、アクションと「行き先の状態」または「ディシジョン」を持ちます。どちらも持たない遷移は、その状態に留まります。ただし開始は、どちらか一方を必ず持ちます。</p>
+  </section>
+
+  <section aria-labelledby="h-classes">
+    <h2 id="h-classes">各要素の属性と規則</h2>
+    <p class="small">名前を持つ要素（アクター、状態、イベント、分岐）の名前は、そのまま識別子です。日本語を使えます。名前には <code>/</code> <code>:</code> <code>&gt;</code> <code>?</code> <code>[</code> <code>]</code> を含められず、前後に空白を置けません。製品のCLIは、同じ並びの中でNFKC正規化すると同じになる名前（全角・半角の違いなど）を表記ゆれとして拒否します。</p>
+
+    <div class="class">
+      <h3>状態定義ファイル</h3>
+      <p>仕様を書く1つのJSONまたはYAMLファイルです。<code>schemaVersion</code> に <code>"1"</code> を書きます。ファイルの最上位は名前のないルート状態で、最上位に書く <code>start</code>、<code>events</code>、<code>states</code> はルート状態に属します。複数のファイルは1つのルート状態にまとまり、ルート状態の <code>start</code> は全ファイルを通じてちょうど1つ書きます。同じ形式のファイルに、アクター、ユースケース、回帰、共通ルールも書けます。</p>
+    </div>
+
+    <div class="class">
+      <h3>アクター</h3>
+      <div class="tablewrap"><table>
+        <thead><tr><th>属性</th><th>JSON</th><th>規則</th></tr></thead>
+        <tbody>
+          <tr><td>名称</td><td><code>actors</code> のキー</td><td>全ファイルを通じて一意</td></tr>
+          <tr><td>説明</td><td><code>description</code></td><td>任意</td></tr>
+        </tbody>
+      </table></div>
+      <p>ファイルの最上位に書きます。イベントの <code>actors</code> とユースケースの <code>actor</code> が名称で参照します。役割や権限の違いは、イベントを起こせるアクターで表します。</p>
+    </div>
+
+    <div class="class">
+      <h3>状態</h3>
+      <div class="tablewrap"><table>
+        <thead><tr><th>属性</th><th>JSON</th><th>規則</th></tr></thead>
+        <tbody>
+          <tr><td>名称</td><td>親の <code>states</code> のキー</td><td>同じ親の中で一意。ルート状態からのパス（<code>顧客管理/顧客編集</code>）で識別</td></tr>
+          <tr><td>画面</td><td><code>screen</code></td><td>任意の文字列。図には状態名と違うときだけ表示</td></tr>
+          <tr><td>配置層</td><td><code>layoutLayer</code></td><td>任意の非負整数。同じ親の中での図の配置順。検査には影響しない</td></tr>
+          <tr><td>開始</td><td><code>start</code></td><td>子状態を持つ状態では必須。子状態を持たない状態には書けない</td></tr>
+          <tr><td>イベント</td><td><code>events</code></td><td>イベント名から定義へのmap</td></tr>
+          <tr><td>子状態</td><td><code>states</code></td><td>子状態を入れ子で書く</td></tr>
+        </tbody>
+      </table></div>
+      <p>子状態を持つ状態へ入ると、開始をたどって子状態を持たない状態（末端状態）まで進みます。末端状態にいる間、その祖先もすべて有効です。状態を参照する箇所には、完全なパスか、1つの状態だけに一致するパスの末尾を書けます。</p>
+    </div>
+
+    <div class="class">
+      <h3>遷移 «抽象»</h3>
+      <div class="tablewrap"><table>
+        <thead><tr><th>属性</th><th>JSON</th><th>規則</th></tr></thead>
+        <tbody>
+          <tr><td>アクション</td><td><code>action</code></td><td>任意。選んだ遷移で行うシステムの振る舞い</td></tr>
+          <tr><td>行き先の状態</td><td><code>to</code></td><td>状態の参照。<code>decision</code> とは同時に書けない</td></tr>
+          <tr><td>ディシジョン</td><td><code>decision</code></td><td><code>to</code> とは同時に書けない</td></tr>
+        </tbody>
+      </table></div>
+      <p>イベント・開始・分岐に共通する部分です。<code>to</code> を持てばその状態へ入り（子状態を持つ状態なら開始をたどり）、<code>decision</code> を持てば分岐し、どちらも持たなければイベントが起きた末端状態に留まります。留まるときは退場・再入場や開始への入り直しは起こりません。</p>
+    </div>
+
+    <div class="class">
+      <h3>イベント</h3>
+      <div class="tablewrap"><table>
+        <thead><tr><th>属性</th><th>JSON</th><th>規則</th></tr></thead>
+        <tbody>
+          <tr><td>名称</td><td>状態の <code>events</code> のキー</td><td>状態の中で一意</td></tr>
+          <tr><td>アクター</td><td><code>actors</code></td><td>必須。1つ以上のアクターの名称</td></tr>
+          <tr><td>通常表示</td><td><code>defaultVisible</code></td><td>任意。<code>true</code> なら通常図に表示。検査には影響しない</td></tr>
+          <tr><td>遷移の属性</td><td><code>action</code>, <code>to</code>, <code>decision</code></td><td>遷移を継承</td></tr>
+        </tbody>
+      </table></div>
+      <p>イベントは状態の中に書き、そのまま遷移になります。子状態は親のイベントを引き継ぎ、どの子状態にいても親のイベントを起こせます。末端に近い状態に同名のイベントがあれば、そちらが優先します。ルート状態に書いたイベントはすべての状態で有効です。</p>
+    </div>
+
+    <div class="class">
+      <h3>開始</h3>
+      <p>状態の <code>start</code> に書く遷移です。遷移の属性を継承し、行き先の状態かディシジョンを必ず持ちます（留まることはできません）。開始とその分岐の行き先は、その状態の内側の状態でなければなりません。ルート状態の開始はシステム全体の開始で、どの状態を行き先にしてもかまいません。状態へ入ると自動的に進み、利用者が起こすものではありません。</p>
+    </div>
+
+    <div class="class">
+      <h3>ディシジョン</h3>
+      <div class="tablewrap"><table>
+        <thead><tr><th>属性</th><th>JSON</th><th>規則</th></tr></thead>
+        <tbody>
+          <tr><td>表示名</td><td><code>label</code></td><td>任意。図に表示する。重複してよい</td></tr>
+          <tr><td>分岐</td><td><code>branches</code></td><td>必須。分岐名から分岐へのmap。2つ以上</td></tr>
+        </tbody>
+      </table></div>
+      <p>遷移の後にどの分岐へ進むかを表します。独自の識別子を持たず、それを持つイベント・開始・分岐に属します。図では、それを持つ遷移の矢印が入る菱形で表示します。</p>
+    </div>
+
+    <div class="class">
+      <h3>分岐</h3>
+      <div class="tablewrap"><table>
+        <thead><tr><th>属性</th><th>JSON</th><th>規則</th></tr></thead>
+        <tbody>
+          <tr><td>名称</td><td><code>branches</code> のキー</td><td>同じディシジョンの中で一意</td></tr>
+          <tr><td>遷移の属性</td><td><code>action</code>, <code>to</code>, <code>decision</code></td><td>遷移を継承</td></tr>
+        </tbody>
+      </table></div>
+      <p>分岐は条件式を持たず、名前だけを持ちます。どの分岐を通るかはシナリオが分岐名で指定します。分岐の後にさらに分岐するときは <code>decision</code> を入れ子で書きます。分岐の木は合流も循環もしません。行き先を持たない分岐は、イベントが起きた末端状態へ戻ります。開始の分岐は留まれません。</p>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-id">
+    <h2 id="h-id">識別のしかた</h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>要素</th><th>識別子</th><th>例</th></tr></thead>
+        <tbody>
+          <tr><td>アクター</td><td>名称。全ファイルを通じて一意</td><td><code>編集担当者</code></td></tr>
+          <tr><td>状態</td><td>ルート状態からのパス。名称は同じ親の中で一意。ルート状態は名前を持たない</td><td><code>顧客管理/顧客編集</code></td></tr>
+          <tr><td>イベント</td><td><code>状態:イベント</code>。別の状態の同名イベントは別物。ルート状態のイベントは <code>:イベント</code></td><td><code>顧客管理/顧客編集:更新</code></td></tr>
+          <tr><td>開始</td><td><code>状態:[開始]</code>。ルート状態の開始は <code>:[開始]</code></td><td><code>顧客管理:[開始]</code></td></tr>
+          <tr><td>ディシジョン</td><td>独自の識別子を持たない。それを持つイベント・開始・分岐に属する</td><td>表示名「顧客の有無」は重複してよい</td></tr>
+          <tr><td>分岐</td><td>持ち主の遷移に <code>&gt;分岐名</code> を続けた並び</td><td><code>顧客管理/顧客編集:更新&gt;顧客なし</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="small">ユースケース、シナリオ、網羅率、レポートは、アクター・状態・イベント・分岐をこの識別子で参照します。ユースケースの <code>scope</code> はイベントを、<code>ends</code> はイベントまたは分岐を参照します。状態の部分には、1つの状態だけに一致するパスの末尾（<code>顧客編集:更新</code>）も書けます。</p>
+  </section>
+
+  <section aria-labelledby="h-example">
+    <h2 id="h-example">記述例</h2>
+    <div class="cols">
+      <div class="stack">
+        <p class="small">ファイルの最上位は名前のないルート状態で、その <code>start</code> がシステム全体の開始です。子状態は親の <code>states</code> の中に書きます。顧客編集で「更新」すると、顧客を更新してから顧客の有無で分岐します。分岐は条件式ではなく名前だけを持ちます。</p>
+<pre>{
+  "schemaVersion": "1",
+  "start": { "to": "顧客管理" },
+  "actors": {
+    "担当者": { "description": "顧客情報を検索・閲覧する" },
+    "編集担当者": { "description": "顧客情報を編集・削除もできる" }
+  },
+  "states": {
+    "顧客管理": {
+      "start": { "to": "顧客検索" },
+      "states": {
+        "顧客検索": { … },
+        "顧客閲覧": { … },
+        "顧客編集": {
+          "events": {
+            "更新": {
+              "actors": ["編集担当者"],
+              "action": "顧客を更新する",
+              "decision": {
+                "label": "顧客の有無",
+                "branches": {
+                  "顧客あり": { "action": "顧客を表示する",
+                                "to": "顧客閲覧" },
+                  "顧客なし": { "action": "アラートを表示する",
+                                "to": "顧客検索" }
+                }
+              }
+            },
+            "取消": { "actors": ["編集担当者"],
+                      "to": "顧客閲覧" }
+          }
+        }
+      }
+    }
+  }
+}</pre>
+      </div>
+      <div class="stack">
+        <p class="small">分岐の後にさらに分岐する場合は、分岐の行き先に次のディシジョンを書きます。</p>
+<pre>"branches": {
+  "顧客なし": { "action": "アラートを表示する",
+                "to": "顧客検索" },
+  "顧客あり": {
+    "decision": {
+      "label": "競合の有無",
+      "branches": {
+        "競合なし": { "action": "顧客を表示する",
+                      "to": "顧客閲覧" },
+        "競合あり": { "action": "競合を表示する",
+                      "to": "顧客編集" }
+      }
+    }
+  }
+}</pre>
+        <p class="small">行き先を持たない分岐は、イベントを起こした状態に留まります。</p>
+<pre>"削除": {
+  "actors": ["編集担当者"],
+  "decision": {
+    "label": "削除確認",
+    "branches": {
+      "はい": { "action": "顧客を削除する",
+                "to": "顧客検索" },
+      "いいえ": {}
+    }
+  }
+}</pre>
+        <p class="small">シナリオの手順は、イベント名と、通る分岐名の並びで書きます。</p>
+<pre>"steps": [
+  { "event": "検索", "branches": ["1件以上"] },
+  { "event": "閲覧", "branches": ["顧客あり"] },
+  { "event": "編集" },
+  { "event": "更新", "branches": ["顧客なし"] }
+]</pre>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-check">
+    <h2 id="h-check">検査で確かめること</h2>
+    <ul class="list">
+      <li><b>構造が正しいか。</b>名前の規則と表記ゆれ、参照先の状態があり一意に決まること、子を持つ状態（ルート状態を含む）がそれぞれ開始を持つこと、開始の行き先がその状態の内側にあること、ディシジョンに分岐が2つ以上あること。到達できない状態や、上書きされて一度も起きないイベントは警告します。</li>
+      <li><b>シナリオがたどれるか。</b>各手順のイベントがその時点の状態で受け付けられ、指定した分岐名がそのイベントの先に実在すること。ユースケースのシナリオは、<code>scope</code> のイベントだけを使い、<code>ends</code> のいずれかを通って終わること。</li>
+      <li><b>アクターが起こせるか。</b>シナリオの手順に、アクターが起こせないイベントが含まれていないこと。「担当者は編集できない」のような権限は、回帰の拒否の手順（<code>"reject": true</code>）で確かめます。</li>
+      <li><b>ユースケースを終えられるか。</b>ユースケースの各開始から、<code>scope</code> のイベントだけで <code>ends</code> に到達できること。</li>
+      <li><b>網羅率。</b>末端状態・複合状態・遷移（イベントと分岐）・連続する2遷移・経路を、シナリオがどれだけ通っているか。</li>
+    </ul>
+    <p class="small">データの中身と業務の論理（顧客が存在するかがどう決まるか、など）は検査しません。それは実装とそのテストが受け持ちます。</p>
+  </section>
+</div>
+</body>
+</html>

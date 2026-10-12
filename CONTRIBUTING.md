@@ -13,7 +13,7 @@ go vet ./...
 
 ## テストの区分
 
-- model/engine/compiler/analysis: 式、同時代入、ID整合、状態探索、網羅率、独立期待、上限到達、変更影響。
+- model/engine/compiler/analysis: 名前と参照の解決、イベントの継承と上書き、ディシジョン、シナリオ再生、完了可能性、網羅率、上限到達、変更影響。
 - project: dry-run、衝突時の無変更、再実行、既存ファイル保護。
 - update: バージョン、HTTPSリダイレクト、トークン、破損、危険なZIP、バックアップ、版固定。
 - report/app: テスト専用配置座標による描画契約、エスケープ、決定論、CLI終了コード。

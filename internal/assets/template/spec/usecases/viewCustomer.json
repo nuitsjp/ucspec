@@ -4,321 +4,84 @@
     "viewCustomer": {
       "name": "顧客を閲覧する",
       "package": "customerManagement",
-      "actor": "利用者",
+      "actor": "担当者",
       "goal": "対象の顧客情報を確認する",
       "starts": [
-        {
-          "state": "search",
-          "values": {
-            "role": "editor"
-          }
-        },
-        {
-          "state": "search",
-          "values": {
-            "role": "reader"
-          }
-        }
+        "顧客検索"
       ],
-      "end": {
-        "or": [
-          {
-            "eq": [
-              {
-                "var": "$state"
-              },
-              "view"
-            ]
-          },
-          {
-            "and": [
-              {
-                "eq": [
-                  {
-                    "var": "$state"
-                  },
-                  "search"
-                ]
-              },
-              {
-                "eq": [
-                  {
-                    "var": "outcome"
-                  },
-                  "empty"
-                ]
-              }
-            ]
-          }
-        ]
-      },
+      "ends": [
+        "顧客検索:閲覧"
+      ],
       "scope": [
-        "searchCustomers",
-        "searchFound",
-        "openCustomer",
-        "openView",
-        "openGone"
+        "顧客検索:検索",
+        "顧客検索:閲覧"
       ],
       "scenarios": {
-        "editor": {
-          "name": "顧客を閲覧する（editor）",
-          "goal": "編集権限を持つ利用者が対象顧客の情報を確認する",
+        "view": {
+          "name": "顧客を閲覧する",
+          "goal": "検索した対象顧客の情報を確認する",
           "expectedOutcome": "検索した対象顧客が存在することを再確認し、顧客閲覧画面でその情報を参照できる",
-          "start": {
-            "state": "search",
-            "values": {
-              "role": "editor"
-            }
-          },
+          "start": "顧客検索",
           "steps": [
             {
-              "transition": "searchCustomers"
+              "event": "検索",
+              "branches": [
+                "1件以上"
+              ]
             },
             {
-              "transition": "searchFound",
-              "expect": {
-                "and": [
-                  {
-                    "eq": [
-                      {
-                        "var": "$state"
-                      },
-                      "search"
-                    ]
-                  },
-                  {
-                    "eq": [
-                      {
-                        "var": "searched"
-                      },
-                      true
-                    ]
-                  },
-                  {
-                    "eq": [
-                      {
-                        "var": "exists"
-                      },
-                      true
-                    ]
-                  }
-                ]
-              }
-            },
-            {
-              "transition": "openCustomer",
-              "input": {
-                "exists": true
-              }
-            },
-            {
-              "transition": "openView"
+              "event": "閲覧",
+              "branches": [
+                "顧客あり"
+              ]
             }
-          ],
-          "expect": {
-            "and": [
-              {
-                "eq": [
-                  {
-                    "var": "$state"
-                  },
-                  "view"
-                ]
-              },
-              {
-                "eq": [
-                  {
-                    "var": "exists"
-                  },
-                  true
-                ]
-              }
-            ]
-          }
-        },
-        "reader": {
-          "name": "顧客を閲覧する（reader）",
-          "goal": "閲覧権限の利用者が対象顧客の情報を確認する",
-          "expectedOutcome": "閲覧権限の範囲で、存在を再確認した対象顧客の情報を参照できる",
-          "start": {
-            "state": "search",
-            "values": {
-              "role": "reader"
-            }
-          },
-          "steps": [
-            {
-              "transition": "searchCustomers"
-            },
-            {
-              "transition": "searchFound",
-              "expect": {
-                "and": [
-                  {
-                    "eq": [
-                      {
-                        "var": "$state"
-                      },
-                      "search"
-                    ]
-                  },
-                  {
-                    "eq": [
-                      {
-                        "var": "searched"
-                      },
-                      true
-                    ]
-                  },
-                  {
-                    "eq": [
-                      {
-                        "var": "exists"
-                      },
-                      true
-                    ]
-                  }
-                ]
-              }
-            },
-            {
-              "transition": "openCustomer",
-              "input": {
-                "exists": true
-              }
-            },
-            {
-              "transition": "openView"
-            }
-          ],
-          "expect": {
-            "and": [
-              {
-                "eq": [
-                  {
-                    "var": "$state"
-                  },
-                  "view"
-                ]
-              },
-              {
-                "eq": [
-                  {
-                    "var": "exists"
-                  },
-                  true
-                ]
-              }
-            ]
-          }
+          ]
         },
         "disappeared": {
-          "name": "顧客を閲覧する前に顧客が消失し、再検索してアラートを表示する",
+          "name": "顧客を閲覧する前に顧客が消失する",
           "goal": "検索後に閲覧対象が消失したことを確認する",
-          "expectedOutcome": "消失した顧客の閲覧を開始せず、再検索とアラート表示を行って検索画面に戻る",
-          "start": {
-            "state": "search",
-            "values": {
-              "role": "editor"
-            }
-          },
+          "expectedOutcome": "消失した顧客の閲覧を開始せず、アラートを表示して検索画面に留まる",
+          "start": "顧客検索",
           "steps": [
             {
-              "transition": "searchCustomers"
+              "event": "検索",
+              "branches": [
+                "1件以上"
+              ]
             },
             {
-              "transition": "searchFound"
-            },
-            {
-              "transition": "openCustomer",
-              "input": {
-                "exists": false
-              }
-            },
-            {
-              "transition": "openGone",
-              "expect": {
-                "and": [
-                  {
-                    "eq": [
-                      {
-                        "var": "$state"
-                      },
-                      "search"
-                    ]
-                  },
-                  {
-                    "eq": [
-                      {
-                        "var": "searched"
-                      },
-                      true
-                    ]
-                  },
-                  {
-                    "eq": [
-                      {
-                        "var": "searchAlert"
-                      },
-                      true
-                    ]
-                  },
-                  {
-                    "eq": [
-                      {
-                        "var": "outcome"
-                      },
-                      "empty"
-                    ]
-                  }
-                ]
-              }
+              "event": "閲覧",
+              "branches": [
+                "顧客なし"
+              ]
             }
-          ],
-          "expect": {
-            "and": [
-              {
-                "eq": [
-                  {
-                    "var": "$state"
-                  },
-                  "search"
-                ]
-              },
-              {
-                "eq": [
-                  {
-                    "var": "searched"
-                  },
-                  true
-                ]
-              },
-              {
-                "eq": [
-                  {
-                    "var": "searchAlert"
-                  },
-                  true
-                ]
-              },
-              {
-                "eq": [
-                  {
-                    "var": "outcome"
-                  },
-                  "empty"
-                ]
-              },
-              {
-                "eq": [
-                  {
-                    "var": "exists"
-                  },
-                  false
-                ]
-              }
-            ]
-          }
+          ]
+        },
+        "retry": {
+          "name": "0件の後に再検索して閲覧する",
+          "goal": "検索条件を見直して目的の顧客を見つけ、その情報を確認する",
+          "expectedOutcome": "最初の検索で0件アラートを確認した後、再検索で見つかった顧客の情報を顧客閲覧画面で参照できる",
+          "start": "顧客検索",
+          "steps": [
+            {
+              "event": "検索",
+              "branches": [
+                "0件"
+              ]
+            },
+            {
+              "event": "検索",
+              "branches": [
+                "1件以上"
+              ]
+            },
+            {
+              "event": "閲覧",
+              "branches": [
+                "顧客あり"
+              ]
+            }
+          ]
         }
       }
     }

@@ -1,289 +1,202 @@
+// Package engine moves through the compiled state structure. It knows no data:
+// a configuration is an active leaf, or a decision being resolved.
 package engine
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/nuitsjp/ucspec/internal/model"
 )
 
 type Engine struct {
 	Spec *model.Spec
-	Out  map[string][]string
 }
 
-func New(s *model.Spec) *Engine {
-	e := &Engine{Spec: s, Out: map[string][]string{}}
-	for _, id := range model.Keys(s.Transitions) {
-		t := s.Transitions[id]
-		e.Out[t.From] = append(e.Out[t.From], id)
-	}
-	return e
+func New(s *model.Spec) *Engine { return &Engine{Spec: s} }
+
+// Edge is one transition from a configuration and the configuration it leads to.
+type Edge struct {
+	Transition string
+	Next       model.Snapshot
 }
 
-func (e *Engine) Events(state string) []string {
-	if e.Spec.IsChoice(state) {
-		// The empty trigger is an automatic branch, never an external event.
-		return []string{""}
-	}
-	if e.Spec.States[state].Terminal {
-		return []string{}
-	}
-	events := map[string]bool{}
-	for _, id := range e.Spec.StatePath(state) {
-		for _, event := range e.Spec.States[id].Events {
-			events[event] = true
-		}
-	}
-	return model.Keys(events)
-}
-func (e *Engine) Inputs(event string) ([]map[string]any, error) {
-	if event == "" {
-		return []map[string]any{{}}, nil
-	}
-	ev, ok := e.Spec.Events[event]
-	if !ok {
-		return nil, fmt.Errorf("unknown event %s", event)
-	}
-	r := []map[string]any{{}}
-	limit := e.Spec.Project.Limits.Combinations
-	for _, k := range model.Keys(ev.Parameters) {
-		d := ev.Parameters[k]
-		if len(d) == 0 {
-			return nil, fmt.Errorf("empty parameter domain %s.%s", event, k)
-		}
-		if len(r) > limit/len(d) {
-			return nil, fmt.Errorf("parameter combinations exceed %d", limit)
-		}
-		n := []map[string]any{}
-		for _, v := range r {
-			for _, x := range d {
-				q := model.CopyValues(v)
-				q[k] = x
-				n = append(n, q)
+// Available returns the events a leaf accepts by name. Events of ancestors are
+// inherited; an event declared closer to the leaf overrides one with the same name.
+func (e *Engine) Available(leaf string) map[string]string {
+	events := map[string]string{}
+	for _, path := range e.Spec.StatePath(leaf) {
+		for name, id := range e.Spec.States[path].Events {
+			if _, ok := events[name]; !ok {
+				events[name] = id
 			}
 		}
-		r = n
 	}
-	return r, nil
+	return events
 }
-func (e *Engine) ValidateInput(event string, in map[string]any) error {
-	ev, ok := e.Spec.Events[event]
-	if !ok {
-		return fmt.Errorf("unknown event %s", event)
-	}
-	for _, k := range model.Keys(ev.Parameters) {
-		d := ev.Parameters[k]
-		x, ok := in[k]
-		if !ok || !model.InDomain(d, x) {
-			return fmt.Errorf("parameter %s.%s missing or outside domain", event, k)
-		}
-	}
-	for _, k := range model.Keys(in) {
-		if _, ok := ev.Parameters[k]; !ok {
-			return fmt.Errorf("unknown parameter %s.%s", event, k)
-		}
-	}
-	return nil
-}
-func (e *Engine) Select(st model.Snapshot, event string, in map[string]any) ([]string, []model.Observation, bool, error) {
-	if event == "" && e.Spec.IsChoice(st.State) {
-		if len(in) != 0 {
-			return nil, nil, false, fmt.Errorf("choice branches do not accept event input")
-		}
-	} else {
-		if err := e.ValidateInput(event, in); err != nil {
-			return nil, nil, false, err
-		}
-	}
-	if !model.Contains(e.Events(st.State), event) {
-		return nil, nil, false, nil
-	}
-	ev := e.Spec.Events[event]
-	eval := Evaluation{Spec: e.Spec, State: st, Input: in}
-	if ev.When != nil {
-		b, err := eval.Bool(ev.When)
-		if err != nil {
-			return nil, nil, false, err
-		}
-		if !b {
-			return nil, nil, false, nil
-		}
-	}
-	ids := []string{}
-	obs := []model.Observation{}
-	sources := e.Spec.StatePath(st.State)
-	if e.Spec.IsChoice(st.State) {
-		sources = []string{st.State}
-	}
-	for _, source := range sources {
-		for _, id := range e.Out[source] {
-			t := e.Spec.Transitions[id]
-			if t.Event != event {
-				continue
-			}
-			eval.Atoms = map[string]bool{}
-			b := true
-			var err error
-			if t.Guard != nil {
-				b, err = eval.Bool(t.Guard)
-			}
+
+// Outgoing lists the transitions leaving a configuration. From a leaf only the
+// events the actor may raise are returned; an empty actor allows every event.
+func (e *Engine) Outgoing(v model.Snapshot, actor string) ([]Edge, error) {
+	edges := []Edge{}
+	if d, ok := e.Spec.Decisions[v.State]; ok {
+		for _, id := range d.Branches {
+			next, err := e.next(id, v.Origin)
 			if err != nil {
-				return nil, nil, true, fmt.Errorf("guard %s: %w", id, err)
+				return nil, err
 			}
-			obs = append(obs, model.Observation{Transition: id, Atoms: eval.Atoms, Guard: b})
-			if b {
-				ids = append(ids, id)
-			}
+			edges = append(edges, Edge{id, next})
 		}
-		// The most deeply nested enabled source wins. Conflicts at that
-		// source are still returned for the event-partition check.
-		if len(ids) > 0 {
-			break
-		}
+		return edges, nil
 	}
-	return ids, obs, true, nil
+	available := e.Available(v.State)
+	for _, name := range model.Keys(available) {
+		id := available[name]
+		if actor != "" && !model.Contains(e.Spec.Transitions[id].Actors, actor) {
+			continue
+		}
+		next, err := e.next(id, v.State)
+		if err != nil {
+			return nil, err
+		}
+		edges = append(edges, Edge{id, next})
+	}
+	return edges, nil
 }
-func (e *Engine) Apply(st model.Snapshot, id string, in map[string]any) (model.Snapshot, []model.Observation, error) {
-	t, ok := e.Spec.Transitions[id]
+
+// next resolves where a transition leads. Without a destination the
+// configuration returns to the leaf that raised the event.
+func (e *Engine) next(id, origin string) (model.Snapshot, error) {
+	t := e.Spec.Transitions[id]
+	switch {
+	case t.To == "":
+		if origin == "" {
+			return model.Snapshot{}, fmt.Errorf("%s has no destination", id)
+		}
+		return model.Snapshot{State: origin}, nil
+	case e.Spec.IsDecision(t.To):
+		return model.Snapshot{State: t.To, Origin: origin}, nil
+	}
+	entered, err := e.Spec.Enter(t.To)
+	if err != nil {
+		return model.Snapshot{}, err
+	}
+	if e.Spec.IsDecision(entered) {
+		return model.Snapshot{State: entered, Origin: origin}, nil
+	}
+	return model.Snapshot{State: entered}, nil
+}
+
+// Start enters a state for a scenario or exploration start.
+func (e *Engine) Start(state string) (model.Snapshot, error) {
+	entered, err := e.Spec.Enter(state)
+	if err != nil {
+		return model.Snapshot{}, err
+	}
+	return model.Snapshot{State: entered}, nil
+}
+
+// Play performs an authored step: the event, then the named branch at each
+// decision passed on the way, in order.
+func (e *Engine) Play(v model.Snapshot, step model.Step, actor string) (model.Snapshot, []string, error) {
+	if e.Spec.IsDecision(v.State) {
+		return v, nil, fmt.Errorf("a decision is unresolved before event %q", step.Event)
+	}
+	id, ok := e.Available(v.State)[step.Event]
+	allowed := ok && (actor == "" || model.Contains(e.Spec.Transitions[id].Actors, actor))
+	if step.Reject {
+		if allowed {
+			return v, nil, fmt.Errorf("event %q was expected to be rejected in %s", step.Event, v.State)
+		}
+		return v, nil, nil
+	}
 	if !ok {
-		return st, nil, fmt.Errorf("unknown transition %s", id)
+		return v, nil, fmt.Errorf("event %q is not available in %s", step.Event, v.State)
 	}
-	if !e.Spec.InState(st.State, t.From) {
-		return st, nil, fmt.Errorf("%s starts at %s, not %s", id, t.From, st.State)
+	if !allowed {
+		return v, nil, fmt.Errorf("%s cannot raise event %q", actor, step.Event)
 	}
-	ids, obs, _, err := e.Select(st, t.Event, in)
+	path := []string{id}
+	current, err := e.next(id, v.State)
 	if err != nil {
-		return st, obs, err
+		return v, nil, err
 	}
-	if len(ids) != 1 || ids[0] != id {
-		return st, obs, fmt.Errorf("%s not uniquely enabled (enabled=%v)", id, ids)
-	}
-	next := model.CloneSnapshot(st)
-	if t.Kind == "internal" {
-		// Internal transitions keep the active configuration. In particular, a
-		// transition declared on a composite state must not re-enter its initial
-		// child.
-		next.State = st.State
-	} else {
-		next.State, err = e.Spec.Enter(t.To)
-		if err != nil {
-			return st, obs, err
+	used := 0
+	for e.Spec.IsDecision(current.State) {
+		d := e.Spec.Decisions[current.State]
+		names := []string{}
+		for _, b := range d.Branches {
+			names = append(names, e.Spec.Transitions[b].Name)
+		}
+		if used >= len(step.Branches) {
+			return v, nil, fmt.Errorf("decision %q needs a branch: one of %s", e.Spec.Label(current.State), strings.Join(names, ", "))
+		}
+		branch := model.BranchID(d.Owner, step.Branches[used])
+		if !model.Contains(d.Branches, branch) {
+			return v, nil, fmt.Errorf("decision %q has no branch %q (one of %s)", e.Spec.Label(current.State), step.Branches[used], strings.Join(names, ", "))
+		}
+		used++
+		path = append(path, branch)
+		if current, err = e.next(branch, current.Origin); err != nil {
+			return v, nil, err
 		}
 	}
-	eval := Evaluation{Spec: e.Spec, State: st, Input: in}
-	// All assignments read the PRE-state (simultaneous assignment semantics).
-	for _, k := range model.Keys(t.Set) {
-		v, err := eval.Eval(t.Set[k])
-		if err != nil {
-			return st, obs, fmt.Errorf("effect %s.%s: %w", id, k, err)
-		}
-		d, ok := e.Spec.Variables[k]
-		if !ok || !model.InDomain(d.Domain, v) {
-			return st, obs, fmt.Errorf("effect %s.%s leaves finite domain", id, k)
-		}
-		next.Values[k] = v
+	if used < len(step.Branches) {
+		return v, nil, fmt.Errorf("event %q passes no decision for branch %q", step.Event, step.Branches[used])
 	}
-	return next, obs, nil
+	return current, path, nil
 }
+
+// Replay plays a scenario. A use-case scenario must start at a declared start,
+// stay within the scope and stop at the step that takes an end transition.
 func (e *Engine) Replay(id string, sc model.Scenario, uc *model.UseCase) model.ScenarioResult {
-	r := model.ScenarioResult{ID: id, Name: sc.Name, Goal: sc.Goal, ExpectedOutcome: sc.ExpectedOutcome, Expect: sc.Expect, Witness: model.Witness{Start: sc.Start, Steps: sc.Steps}, Trace: []model.Snapshot{}}
-	st, err := e.Spec.Normalize(sc.Start)
+	actor := sc.Actor
+	if uc != nil {
+		actor = uc.Actor
+	}
+	r := model.ScenarioResult{ID: id, Name: sc.Name, Goal: sc.Goal, ExpectedOutcome: sc.ExpectedOutcome, Actor: actor, Steps: sc.Steps, Trace: []model.Snapshot{}, Witness: model.Witness{Transitions: []string{}}}
+	fail := func(format string, args ...any) model.ScenarioResult {
+		r.Error = fmt.Sprintf(format, args...)
+		return r
+	}
+	if uc != nil && !model.Contains(uc.Starts, sc.Start) {
+		return fail("scenario start is not a declared use-case start")
+	}
+	v, err := e.Start(sc.Start)
 	if err != nil {
-		r.Error = err.Error()
-		return r
+		return fail("%v", err)
 	}
-	if e.Spec.IsChoice(st.State) {
-		r.Error = "scenario must start in a state, not a choice"
-		return r
+	if e.Spec.IsDecision(v.State) {
+		return fail("scenario start must enter a state without a decision")
 	}
-	r.Witness.Start = st
-	r.Trace = append(r.Trace, st)
-	if uc != nil {
-		matched := false
-		for _, x := range uc.Starts {
-			n, er := e.Spec.Normalize(x)
-			if er == nil && model.Equal(n, st) {
-				matched = true
-			}
-		}
-		if !matched {
-			r.Error = "scenario start is not a declared use-case start"
-			return r
-		}
-	}
+	r.Witness.Start = v.State
+	r.Trace = append(r.Trace, v)
+	ended := false
 	for i, step := range sc.Steps {
-		if uc != nil {
-			if !e.Spec.IsChoice(st.State) {
-				b, er := Predicate(e.Spec, st, uc.End)
-				if er != nil {
-					r.Error = er.Error()
-					return r
-				}
-				if b {
-					r.Error = fmt.Sprintf("step %d continues past use-case end", i+1)
-					return r
-				}
+		if ended {
+			return fail("step %d continues past use-case end", i+1)
+		}
+		if uc != nil && step.Reject {
+			return fail("reject steps belong in regressions, not use-case scenarios")
+		}
+		next, path, err := e.Play(v, step, actor)
+		if err != nil {
+			return fail("step %d: %v", i+1, err)
+		}
+		for _, t := range path {
+			if uc != nil && e.Spec.Transitions[t].Kind == model.KindEvent && !model.Contains(uc.Scope, t) {
+				return fail("step %d: event %s is outside the use-case scope", i+1, t)
 			}
-			if !model.Contains(uc.Scope, step.Transition) {
-				r.Error = "transition outside use-case scope: " + step.Transition
-				return r
-			}
-			if step.Reject {
-				r.Error = "reject steps belong in regressions, not coverage scenarios"
-				return r
+			if uc != nil && model.Contains(uc.Ends, t) {
+				ended = true
 			}
 		}
-		if step.Reject {
-			if e.Spec.IsChoice(st.State) {
-				r.Error = "choice must resolve before another event or rejection assertion"
-				return r
-			}
-			t, ok := e.Spec.Transitions[step.Transition]
-			if !ok || !e.Spec.InState(st.State, t.From) {
-				r.Error = "rejection must target a transition from current state"
-				return r
-			}
-			ids, _, _, er := e.Select(st, t.Event, step.Input)
-			if er != nil {
-				r.Error = er.Error()
-				return r
-			}
-			if model.Contains(ids, step.Transition) {
-				r.Error = "expected rejected transition is enabled: " + step.Transition
-				return r
-			}
-		} else {
-			next, obs, er := e.Apply(st, step.Transition, step.Input)
-			if er != nil {
-				r.Error = fmt.Sprintf("step %d: %v", i+1, er)
-				return r
-			}
-			st = next
-			r.GuardObservations = append(r.GuardObservations, obs...)
-		}
-		r.Trace = append(r.Trace, st)
-		if step.Expect != nil {
-			ok, er := Predicate(e.Spec, st, step.Expect)
-			if er != nil || !ok {
-				r.Error = fmt.Sprintf("step %d expectation failed: %v", i+1, er)
-				return r
-			}
-		}
+		r.Witness.Transitions = append(r.Witness.Transitions, path...)
+		v = next
+		r.Trace = append(r.Trace, v)
 	}
-	if e.Spec.IsChoice(st.State) {
-		r.Error = "scenario ends at an unresolved choice"
-		return r
-	}
-	if uc != nil {
-		b, er := Predicate(e.Spec, st, uc.End)
-		if er != nil || !b {
-			r.Error = "scenario did not reach a use-case end"
-			return r
-		}
-	}
-	b, err := Predicate(e.Spec, st, sc.Expect)
-	if err != nil || !b {
-		r.Error = fmt.Sprintf("final expectation failed: %v", err)
-		return r
+	if uc != nil && !ended {
+		return fail("scenario did not reach a use-case end")
 	}
 	r.Valid = true
 	return r

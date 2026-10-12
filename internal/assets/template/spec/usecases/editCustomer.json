@@ -4,521 +4,68 @@
     "editCustomer": {
       "name": "顧客を編集する",
       "package": "customerManagement",
-      "actor": "利用者",
+      "actor": "編集担当者",
       "goal": "顧客情報を編集し、更新結果を確認する",
       "starts": [
-        {
-          "state": "search",
-          "values": {
-            "role": "editor"
-          }
-        },
-        {
-          "state": "search",
-          "values": {
-            "role": "reader"
-          }
-        }
+        "顧客閲覧"
       ],
-      "end": {
-        "or": [
-          {
-            "eq": [
-              {
-                "var": "outcome"
-              },
-              "updated"
-            ]
-          },
-          {
-            "eq": [
-              {
-                "var": "outcome"
-              },
-              "cancelled"
-            ]
-          },
-          {
-            "and": [
-              {
-                "eq": [
-                  {
-                    "var": "$state"
-                  },
-                  "search"
-                ]
-              },
-              {
-                "eq": [
-                  {
-                    "var": "outcome"
-                  },
-                  "empty"
-                ]
-              }
-            ]
-          }
-        ]
-      },
+      "ends": [
+        "顧客編集:更新",
+        "顧客編集:取消"
+      ],
       "scope": [
-        "searchCustomers",
-        "searchFound",
-        "openCustomer",
-        "openView",
-        "openGone",
-        "openEdit",
-        "updateCustomer",
-        "cancelEdit"
+        "顧客閲覧:編集",
+        "顧客編集:更新",
+        "顧客編集:取消"
       ],
       "scenarios": {
         "update": {
           "name": "正常に更新する",
           "goal": "顧客情報を最新の内容へ編集して更新する",
-          "expectedOutcome": "有効な入力で顧客情報が更新され、顧客閲覧画面で更新結果を確認できる",
-          "start": {
-            "state": "search",
-            "values": {
-              "role": "editor"
-            }
-          },
+          "expectedOutcome": "顧客情報が更新され、顧客閲覧画面で更新結果を確認できる",
+          "start": "顧客閲覧",
           "steps": [
             {
-              "transition": "searchCustomers"
+              "event": "編集"
             },
             {
-              "transition": "searchFound"
-            },
-            {
-              "transition": "openCustomer",
-              "input": {
-                "exists": true
-              }
-            },
-            {
-              "transition": "openView"
-            },
-            {
-              "transition": "openEdit",
-              "expect": {
-                "and": [
-                  {
-                    "inState": "edit"
-                  },
-                  {
-                    "eq": [
-                      {
-                        "var": "$state"
-                      },
-                      "edit"
-                    ]
-                  }
-                ]
-              }
-            },
-            {
-              "transition": "updateCustomer",
-              "input": {
-                "valid": true,
-                "exists": true
-              }
-            },
-            {
-              "transition": "openView",
-              "expect": {
-                "and": [
-                  {
-                    "eq": [
-                      {
-                        "var": "$state"
-                      },
-                      "view"
-                    ]
-                  },
-                  {
-                    "eq": [
-                      {
-                        "var": "revision"
-                      },
-                      "updated"
-                    ]
-                  },
-                  {
-                    "eq": [
-                      {
-                        "var": "outcome"
-                      },
-                      "updated"
-                    ]
-                  }
-                ]
-              }
+              "event": "更新",
+              "branches": [
+                "顧客あり"
+              ]
             }
-          ],
-          "expect": {
-            "and": [
-              {
-                "eq": [
-                  {
-                    "var": "revision"
-                  },
-                  "updated"
-                ]
-              },
-              {
-                "eq": [
-                  {
-                    "var": "$state"
-                  },
-                  "view"
-                ]
-              },
-              {
-                "eq": [
-                  {
-                    "var": "outcome"
-                  },
-                  "updated"
-                ]
-              }
-            ]
-          }
+          ]
         },
         "cancel": {
           "name": "編集を中止する",
           "goal": "顧客情報の編集を取りやめ、元の情報を維持する",
           "expectedOutcome": "編集内容は更新されず、元の顧客情報を保ったまま顧客閲覧画面へ戻る",
-          "start": {
-            "state": "search",
-            "values": {
-              "role": "editor"
-            }
-          },
+          "start": "顧客閲覧",
           "steps": [
             {
-              "transition": "searchCustomers"
+              "event": "編集"
             },
             {
-              "transition": "searchFound"
-            },
-            {
-              "transition": "openCustomer",
-              "input": {
-                "exists": true
-              }
-            },
-            {
-              "transition": "openView"
-            },
-            {
-              "transition": "openEdit",
-              "expect": {
-                "and": [
-                  {
-                    "inState": "edit"
-                  },
-                  {
-                    "eq": [
-                      {
-                        "var": "$state"
-                      },
-                      "edit"
-                    ]
-                  }
-                ]
-              }
-            },
-            {
-              "transition": "cancelEdit"
+              "event": "取消"
             }
-          ],
-          "expect": {
-            "and": [
-              {
-                "eq": [
-                  {
-                    "var": "$state"
-                  },
-                  "view"
-                ]
-              },
-              {
-                "eq": [
-                  {
-                    "var": "revision"
-                  },
-                  "original"
-                ]
-              },
-              {
-                "eq": [
-                  {
-                    "var": "outcome"
-                  },
-                  "cancelled"
-                ]
-              }
-            ]
-          }
-        },
-        "disappeared": {
-          "name": "編集を開始する前に顧客が消失する",
-          "goal": "編集対象が閲覧前に消失したことを確認し、誤った編集を防ぐ",
-          "expectedOutcome": "対象の消失を受けて再検索とアラート表示を行い、顧客情報を更新せず検索画面に留まる",
-          "start": {
-            "state": "search",
-            "values": {
-              "role": "editor"
-            }
-          },
-          "steps": [
-            {
-              "transition": "searchCustomers"
-            },
-            {
-              "transition": "searchFound"
-            },
-            {
-              "transition": "openCustomer",
-              "input": {
-                "exists": false
-              }
-            },
-            {
-              "transition": "openGone",
-              "expect": {
-                "and": [
-                  {
-                    "eq": [
-                      {
-                        "var": "$state"
-                      },
-                      "search"
-                    ]
-                  },
-                  {
-                    "eq": [
-                      {
-                        "var": "searched"
-                      },
-                      true
-                    ]
-                  },
-                  {
-                    "eq": [
-                      {
-                        "var": "searchAlert"
-                      },
-                      true
-                    ]
-                  },
-                  {
-                    "eq": [
-                      {
-                        "var": "exists"
-                      },
-                      false
-                    ]
-                  },
-                  {
-                    "eq": [
-                      {
-                        "var": "revision"
-                      },
-                      "original"
-                    ]
-                  },
-                  {
-                    "eq": [
-                      {
-                        "var": "outcome"
-                      },
-                      "empty"
-                    ]
-                  }
-                ]
-              }
-            }
-          ],
-          "expect": {
-            "and": [
-              {
-                "eq": [
-                  {
-                    "var": "$state"
-                  },
-                  "search"
-                ]
-              },
-              {
-                "eq": [
-                  {
-                    "var": "searched"
-                  },
-                  true
-                ]
-              },
-              {
-                "eq": [
-                  {
-                    "var": "searchAlert"
-                  },
-                  true
-                ]
-              },
-              {
-                "eq": [
-                  {
-                    "var": "exists"
-                  },
-                  false
-                ]
-              },
-              {
-                "eq": [
-                  {
-                    "var": "revision"
-                  },
-                  "original"
-                ]
-              },
-              {
-                "eq": [
-                  {
-                    "var": "outcome"
-                  },
-                  "empty"
-                ]
-              }
-            ]
-          }
+          ]
         },
         "deletedBeforeUpdate": {
           "name": "更新前に顧客が削除されている",
           "goal": "編集中に削除された顧客を誤って更新しない",
           "expectedOutcome": "更新時に顧客の消失を確認してアラートを表示し、顧客検索画面へ戻る",
-          "start": {
-            "state": "search",
-            "values": {
-              "role": "editor"
-            }
-          },
+          "start": "顧客閲覧",
           "steps": [
             {
-              "transition": "searchCustomers"
+              "event": "編集"
             },
             {
-              "transition": "searchFound"
-            },
-            {
-              "transition": "openCustomer",
-              "input": {
-                "exists": true
-              }
-            },
-            {
-              "transition": "openView"
-            },
-            {
-              "transition": "openEdit",
-              "expect": {
-                "and": [
-                  {
-                    "inState": "edit"
-                  },
-                  {
-                    "eq": [
-                      {
-                        "var": "$state"
-                      },
-                      "edit"
-                    ]
-                  }
-                ]
-              }
-            },
-            {
-              "transition": "updateCustomer",
-              "input": {
-                "valid": true,
-                "exists": false
-              }
-            },
-            {
-              "transition": "openGone",
-              "expect": {
-                "and": [
-                  {
-                    "eq": [
-                      {
-                        "var": "$state"
-                      },
-                      "search"
-                    ]
-                  },
-                  {
-                    "eq": [
-                      {
-                        "var": "exists"
-                      },
-                      false
-                    ]
-                  },
-                  {
-                    "eq": [
-                      {
-                        "var": "searchAlert"
-                      },
-                      true
-                    ]
-                  },
-                  {
-                    "eq": [
-                      {
-                        "var": "outcome"
-                      },
-                      "empty"
-                    ]
-                  }
-                ]
-              }
+              "event": "更新",
+              "branches": [
+                "顧客なし"
+              ]
             }
-          ],
-          "expect": {
-            "and": [
-              {
-                "eq": [
-                  {
-                    "var": "$state"
-                  },
-                  "search"
-                ]
-              },
-              {
-                "eq": [
-                  {
-                    "var": "exists"
-                  },
-                  false
-                ]
-              },
-              {
-                "eq": [
-                  {
-                    "var": "searchAlert"
-                  },
-                  true
-                ]
-              },
-              {
-                "eq": [
-                  {
-                    "var": "outcome"
-                  },
-                  "empty"
-                ]
-              }
-            ]
-          }
+          ]
         }
       }
     }

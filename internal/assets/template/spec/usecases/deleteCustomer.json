@@ -4,362 +4,45 @@
     "deleteCustomer": {
       "name": "顧客を削除する",
       "package": "customerManagement",
-      "actor": "利用者",
+      "actor": "編集担当者",
       "goal": "顧客の削除を確認して実行する",
       "starts": [
-        {
-          "state": "search",
-          "values": {
-            "role": "editor"
-          }
-        },
-        {
-          "state": "search",
-          "values": {
-            "role": "reader"
-          }
-        }
+        "顧客閲覧"
       ],
-      "end": {
-        "or": [
-          {
-            "eq": [
-              {
-                "var": "outcome"
-              },
-              "deleted"
-            ]
-          },
-          {
-            "eq": [
-              {
-                "var": "outcome"
-              },
-              "cancelled"
-            ]
-          },
-          {
-            "and": [
-              {
-                "eq": [
-                  {
-                    "var": "$state"
-                  },
-                  "search"
-                ]
-              },
-              {
-                "eq": [
-                  {
-                    "var": "outcome"
-                  },
-                  "empty"
-                ]
-              }
-            ]
-          }
-        ]
-      },
+      "ends": [
+        "顧客閲覧:削除"
+      ],
       "scope": [
-        "searchCustomers",
-        "searchFound",
-        "openCustomer",
-        "openView",
-        "openGone",
-        "requestDelete",
-        "confirmDelete",
-        "cancelDelete"
+        "顧客閲覧:削除"
       ],
       "scenarios": {
         "delete": {
           "name": "削除を確定する",
           "goal": "不要となった顧客情報を確認して削除する",
-          "expectedOutcome": "削除を確定した対象顧客が管理対象から除かれ、検索未実行の顧客検索画面へ戻る",
-          "start": {
-            "state": "search",
-            "values": {
-              "role": "editor"
-            }
-          },
+          "expectedOutcome": "削除を確定した対象顧客が管理対象から除かれ、顧客検索画面へ戻る",
+          "start": "顧客閲覧",
           "steps": [
             {
-              "transition": "searchCustomers"
-            },
-            {
-              "transition": "searchFound"
-            },
-            {
-              "transition": "openCustomer",
-              "input": {
-                "exists": true
-              }
-            },
-            {
-              "transition": "openView"
-            },
-            {
-              "transition": "requestDelete",
-              "input": {
-                "confirmed": true
-              }
-            },
-            {
-              "transition": "confirmDelete",
-              "expect": {
-                "and": [
-                  {
-                    "eq": [
-                      {
-                        "var": "$state"
-                      },
-                      "search"
-                    ]
-                  },
-                  {
-                    "eq": [
-                      {
-                        "var": "exists"
-                      },
-                      false
-                    ]
-                  },
-                  {
-                    "eq": [
-                      {
-                        "var": "searched"
-                      },
-                      false
-                    ]
-                  }
-                ]
-              }
+              "event": "削除",
+              "branches": [
+                "はい"
+              ]
             }
-          ],
-          "expect": {
-            "and": [
-              {
-                "eq": [
-                  {
-                    "var": "exists"
-                  },
-                  false
-                ]
-              },
-              {
-                "eq": [
-                  {
-                    "var": "searched"
-                  },
-                  false
-                ]
-              },
-              {
-                "eq": [
-                  {
-                    "var": "outcome"
-                  },
-                  "deleted"
-                ]
-              },
-              {
-                "eq": [
-                  {
-                    "var": "$state"
-                  },
-                  "search"
-                ]
-              }
-            ]
-          }
+          ]
         },
         "cancel": {
           "name": "削除を中止する",
           "goal": "顧客情報の削除を取りやめ、管理対象として残す",
           "expectedOutcome": "削除は実行されず、顧客閲覧画面で対象顧客の情報が維持される",
-          "start": {
-            "state": "search",
-            "values": {
-              "role": "editor"
-            }
-          },
+          "start": "顧客閲覧",
           "steps": [
             {
-              "transition": "searchCustomers"
-            },
-            {
-              "transition": "searchFound"
-            },
-            {
-              "transition": "openCustomer",
-              "input": {
-                "exists": true
-              }
-            },
-            {
-              "transition": "openView"
-            },
-            {
-              "transition": "requestDelete",
-              "input": {
-                "confirmed": false
-              }
-            },
-            {
-              "transition": "cancelDelete"
+              "event": "削除",
+              "branches": [
+                "いいえ"
+              ]
             }
-          ],
-          "expect": {
-            "and": [
-              {
-                "eq": [
-                  {
-                    "var": "exists"
-                  },
-                  true
-                ]
-              },
-              {
-                "eq": [
-                  {
-                    "var": "outcome"
-                  },
-                  "cancelled"
-                ]
-              }
-            ]
-          }
-        },
-        "disappeared": {
-          "name": "削除を開始する前に顧客が消失する",
-          "goal": "削除対象が閲覧前に消失したことを確認し、誤った削除を防ぐ",
-          "expectedOutcome": "対象の消失を受けて再検索とアラート表示を行い、顧客情報を更新せず検索画面に留まる",
-          "start": {
-            "state": "search",
-            "values": {
-              "role": "editor"
-            }
-          },
-          "steps": [
-            {
-              "transition": "searchCustomers"
-            },
-            {
-              "transition": "searchFound"
-            },
-            {
-              "transition": "openCustomer",
-              "input": {
-                "exists": false
-              }
-            },
-            {
-              "transition": "openGone",
-              "expect": {
-                "and": [
-                  {
-                    "eq": [
-                      {
-                        "var": "$state"
-                      },
-                      "search"
-                    ]
-                  },
-                  {
-                    "eq": [
-                      {
-                        "var": "searched"
-                      },
-                      true
-                    ]
-                  },
-                  {
-                    "eq": [
-                      {
-                        "var": "searchAlert"
-                      },
-                      true
-                    ]
-                  },
-                  {
-                    "eq": [
-                      {
-                        "var": "exists"
-                      },
-                      false
-                    ]
-                  },
-                  {
-                    "eq": [
-                      {
-                        "var": "revision"
-                      },
-                      "original"
-                    ]
-                  },
-                  {
-                    "eq": [
-                      {
-                        "var": "outcome"
-                      },
-                      "empty"
-                    ]
-                  }
-                ]
-              }
-            }
-          ],
-          "expect": {
-            "and": [
-              {
-                "eq": [
-                  {
-                    "var": "$state"
-                  },
-                  "search"
-                ]
-              },
-              {
-                "eq": [
-                  {
-                    "var": "searched"
-                  },
-                  true
-                ]
-              },
-              {
-                "eq": [
-                  {
-                    "var": "searchAlert"
-                  },
-                  true
-                ]
-              },
-              {
-                "eq": [
-                  {
-                    "var": "exists"
-                  },
-                  false
-                ]
-              },
-              {
-                "eq": [
-                  {
-                    "var": "revision"
-                  },
-                  "original"
-                ]
-              },
-              {
-                "eq": [
-                  {
-                    "var": "outcome"
-                  },
-                  "empty"
-                ]
-              }
-            ]
-          }
+          ]
         }
       }
     }

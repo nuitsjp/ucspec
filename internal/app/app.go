@@ -238,7 +238,7 @@ func inspect(command string, args []string, out, errOut io.Writer, d Dependencie
 			return fail(errOut, e)
 		}
 	}
-	fmt.Fprintf(out, "%s: %d reachable configurations, %d scenarios, %d diagnostics\n", r.Status, r.ReachableStates, len(r.Scenarios), len(r.Diagnostics))
+	fmt.Fprintf(out, "%s: %d reachable states, %d scenarios, %d diagnostics\n", r.Status, r.ReachableStates, len(r.Scenarios), len(r.Diagnostics))
 	for _, u := range r.UseCases {
 		for _, c := range u.Coverage {
 			if c.Percent != nil {
@@ -399,7 +399,7 @@ func probe(ctx context.Context, data []byte, expected string) error {
 	return nil
 }
 
-const usage = `ucspec — structured use-case specifications and finite-model verification
+const usage = `ucspec — structured use-case specifications, state structure checks and scenario coverage
 
 Commands:
   ucspec init --dir PRODUCT --name NAME [--repo OWNER/REPO] [--dry-run]

@@ -8,35 +8,11 @@
     "checks/*.json"
   ],
   "output": "artifacts/ucspec",
-  "initial": [
-    {
-      "state": "customerManagement",
-      "values": {
-        "role": "editor"
-      }
-    },
-    {
-      "state": "customerManagement",
-      "values": {
-        "role": "reader"
-      }
-    },
-    {
-      "state": "customerManagement",
-      "values": {
-        "exists": false
-      }
-    }
-  ],
   "limits": {
-    "states": 5000,
     "steps": 10,
-    "paths": 100000,
-    "combinations": 256
+    "paths": 100000
   },
   "coverage": {
-    "transitions": 100,
-    "conditions": 100,
-    "multipleConditions": 100
+    "transitions": 100
   }
 }

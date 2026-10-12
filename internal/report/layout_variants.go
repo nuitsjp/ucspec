@@ -1,24 +1,23 @@
 package report
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"strings"
 
 	"github.com/nuitsjp/ucspec/internal/model"
 )
 
 // Layout every selectable transition set at generation time. The viewer only
 // switches SVGs, keeping the report self-contained and independent of ELK.
-func buildDiagramVariants(s *model.Spec, r *model.Report, viewID string, scope []string, starts []model.Snapshot, layout Layout) ([]diagram, map[string]string, error) {
+func buildDiagramVariants(s *model.Spec, r *model.Report, viewID string, scope []string, starts map[string]string, layout Layout) ([]diagram, map[string]string, error) {
 	base := "system"
 	if viewID != "" {
 		base = "uc-" + viewID
 	}
 	all := scope
-	if all == nil {
-		all = model.Keys(s.Transitions)
-	}
 	normal, hidden := []string{}, []string{}
 	allowed := map[string]bool{}
 	for _, id := range sorted(all) {
@@ -36,8 +35,7 @@ func buildDiagramVariants(s *model.Spec, r *model.Report, viewID string, scope [
 				ids = append(ids, id)
 			}
 		}
-		key, _ := json.Marshal(ids)
-		return string(key), ids
+		return variantKey(ids), ids
 	}
 	index := map[string]string{"[]": base, "*": base + "-all"}
 	if key, _ := keyFor(hidden); key != "[]" {
@@ -54,11 +52,7 @@ func buildDiagramVariants(s *model.Spec, r *model.Report, viewID string, scope [
 		if w == nil {
 			return
 		}
-		path := []string{}
-		for _, step := range w.Steps {
-			path = append(path, step.Transition)
-		}
-		addPath(path)
+		addPath(w.Transitions)
 	}
 	// A hidden edge clicked in the all-transitions view remains selectable when
 	// the viewer returns to the normal visibility mode.
@@ -116,4 +110,14 @@ func buildDiagramVariants(s *model.Spec, r *model.Report, viewID string, scope [
 		index[key] = id
 	}
 	return diagrams, index, nil
+}
+
+// variantKey matches JSON.stringify in the viewer: no HTML escaping, so that
+// transition IDs containing ">" produce the same key in Go and JavaScript.
+func variantKey(ids []string) string {
+	var b bytes.Buffer
+	e := json.NewEncoder(&b)
+	e.SetEscapeHTML(false)
+	_ = e.Encode(ids)
+	return strings.TrimSuffix(b.String(), "\n")
 }

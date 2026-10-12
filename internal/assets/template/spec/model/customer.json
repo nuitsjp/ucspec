@@ -1,411 +1,151 @@
 {
   "schemaVersion": "1",
-  "variables": {
-    "searched": {
-      "domain": [
-        false,
-        true
-      ],
-      "initial": false,
-      "description": "検索を実行済みか。結果件数によって検索の制御状態を分けない。"
-    },
-    "searchAlert": {
-      "domain": [
-        false,
-        true
-      ],
-      "initial": false,
-      "description": "検索結果が0件であることをアラート表示したか。"
-    },
-    "role": {
-      "domain": [
-        "reader",
-        "editor"
-      ],
-      "initial": "editor",
-      "description": "実行中は変化しない利用者権限"
-    },
-    "exists": {
-      "domain": [
-        true,
-        false
-      ],
-      "initial": true,
-      "description": "選択対象が存在するか（1件の抽象モデル）"
-    },
-    "revision": {
-      "domain": [
-        "original",
-        "updated"
-      ],
-      "initial": "original"
-    },
-    "outcome": {
-      "domain": [
-        "none",
-        "viewed",
-        "updated",
-        "deleted",
-        "cancelled",
-        "denied",
-        "empty"
-      ],
-      "initial": "none"
-    },
-    "confirmed": {
-      "domain": [
-        false,
-        true
-      ],
-      "initial": false,
-      "description": "削除確認で「はい」を選んだか。分岐後はfalseへ戻す。"
-    }
+  "start": {
+    "to": "顧客管理"
   },
-  "screens": {
-    "search": {
-      "label": "顧客検索",
-      "description": "検索条件を常に表示し、検索後は同じ画面の下部に検索結果を表示する。"
+  "actors": {
+    "担当者": {
+      "description": "顧客情報を検索・閲覧し、自分の通知設定を更新する社内担当者"
     },
-    "view": {
-      "label": "顧客閲覧"
-    },
-    "edit": {
-      "label": "顧客編集"
-    }
-  },
-  "choices": {
-    "searchResult": {
-      "label": "検索結果",
-      "parent": "customerManagement"
-    },
-    "customerAvailability": {
-      "label": "顧客の有無",
-      "parent": "customerManagement"
-    },
-    "deleteConfirmation": {
-      "label": "削除確認",
-      "parent": "customerManagement"
+    "編集担当者": {
+      "description": "担当者の操作に加えて、顧客情報を編集・削除できる社内担当者"
     }
   },
   "states": {
-    "customerManagement": {
-      "label": "顧客管理",
-      "screen": "search",
-      "events": [
-        "chooseSettings"
-      ],
-      "initial": "search"
-    },
-    "search": {
-      "label": "顧客検索",
-      "screen": "search",
-      "parent": "customerManagement",
-      "layoutLayer": 0,
-      "events": [
-        "search",
-        "open"
-      ]
-    },
-    "view": {
-      "label": "顧客閲覧",
-      "screen": "view",
-      "parent": "customerManagement",
-      "layoutLayer": 1,
-      "events": [
-        "edit",
-        "requestDelete",
-        "back"
-      ]
-    },
-    "edit": {
-      "label": "顧客編集",
-      "screen": "edit",
-      "parent": "customerManagement",
-      "layoutLayer": 2,
-      "events": [
-        "update",
-        "cancelEdit",
-        "chooseCustomers",
-        "chooseSettings"
-      ]
-    }
-  },
-  "events": {
-    "search": {
-      "label": "検索",
-      "source": "user",
-      "parameters": {}
-    },
-    "open": {
-      "label": "閲覧",
-      "source": "user",
-      "parameters": {
-        "exists": [
-          true,
-          false
-        ]
+    "顧客管理": {
+      "start": {
+        "to": "顧客検索"
       },
-      "when": {
-        "and": [
-          {
-            "var": "searched"
-          },
-          {
-            "var": "exists"
+      "events": {
+        "設定を選択": {
+          "actors": ["担当者", "編集担当者"],
+          "action": "通知設定を表示する",
+          "to": "設定"
+        }
+      },
+      "states": {
+        "顧客検索": {
+          "layoutLayer": 0,
+          "events": {
+            "検索": {
+              "actors": ["担当者", "編集担当者"],
+              "defaultVisible": true,
+              "action": "顧客を検索する",
+              "decision": {
+                "label": "検索結果",
+                "branches": {
+                  "1件以上": {
+                    "action": "一覧を表示する"
+                  },
+                  "0件": {
+                    "action": "アラートを表示する"
+                  }
+                }
+              }
+            },
+            "閲覧": {
+              "actors": ["担当者", "編集担当者"],
+              "defaultVisible": true,
+              "decision": {
+                "label": "顧客の有無",
+                "branches": {
+                  "顧客あり": {
+                    "action": "顧客を表示する",
+                    "to": "顧客閲覧"
+                  },
+                  "顧客なし": {
+                    "action": "アラートを表示する"
+                  }
+                }
+              }
+            }
           }
-        ]
-      }
-    },
-    "back": {
-      "label": "検索へ戻る",
-      "source": "user",
-      "parameters": {}
-    },
-    "edit": {
-      "label": "編集",
-      "source": "user",
-      "parameters": {},
-      "when": {
-        "condition": "canEdit"
-      }
-    },
-    "requestDelete": {
-      "label": "削除",
-      "source": "user",
-      "parameters": {
-        "confirmed": [
-          true,
-          false
-        ]
-      },
-      "when": {
-        "and": [
-          {
-            "condition": "exists"
-          },
-          {
-            "condition": "canEdit"
+        },
+        "顧客閲覧": {
+          "layoutLayer": 1,
+          "events": {
+            "検索へ戻る": {
+              "actors": ["担当者", "編集担当者"],
+              "defaultVisible": true,
+              "action": "検索結果を再表示する",
+              "to": "顧客検索"
+            },
+            "編集": {
+              "actors": ["編集担当者"],
+              "defaultVisible": true,
+              "action": "編集欄を表示する",
+              "to": "顧客編集"
+            },
+            "削除": {
+              "actors": ["編集担当者"],
+              "defaultVisible": true,
+              "decision": {
+                "label": "削除確認",
+                "branches": {
+                  "はい": {
+                    "action": "顧客を削除する",
+                    "to": "顧客検索"
+                  },
+                  "いいえ": {}
+                }
+              }
+            }
           }
-        ]
-      }
-    },
-    "cancelEdit": {
-      "label": "取消",
-      "source": "user",
-      "parameters": {}
-    },
-    "update": {
-      "label": "更新",
-      "source": "user",
-      "parameters": {
-        "valid": [
-          true,
-          false
-        ],
-        "exists": [
-          true,
-          false
-        ]
-      },
-      "when": {
-        "param": "valid"
-      }
-    }
-  },
-  "conditions": {
-    "exists": {
-      "eq": [
-        {
-          "var": "exists"
         },
-        true
-      ]
-    },
-    "canEdit": {
-      "eq": [
-        {
-          "var": "role"
-        },
-        "editor"
-      ]
-    },
-    "deleteConfirmed": {
-      "eq": [
-        {
-          "var": "confirmed"
-        },
-        true
-      ]
-    }
-  },
-  "transitions": {
-    "searchCustomers": {
-      "defaultVisible": true,
-      "from": "search",
-      "to": "searchResult",
-      "event": "search",
-      "action": "顧客を検索する"
-    },
-    "searchFound": {
-      "defaultVisible": true,
-      "from": "searchResult",
-      "to": "search",
-      "action": "一覧を表示する",
-      "guard": {
-        "condition": "exists"
-      },
-      "guardLabel": "1件以上",
-      "set": {
-        "outcome": "none",
-        "searched": true,
-        "searchAlert": false
-      }
-    },
-    "searchEmpty": {
-      "defaultVisible": true,
-      "from": "searchResult",
-      "to": "search",
-      "action": "アラートを表示する",
-      "guard": {
-        "not": {
-          "condition": "exists"
+        "顧客編集": {
+          "layoutLayer": 2,
+          "events": {
+            "更新": {
+              "actors": ["編集担当者"],
+              "defaultVisible": true,
+              "action": "顧客を更新する",
+              "decision": {
+                "label": "顧客の有無",
+                "branches": {
+                  "顧客あり": {
+                    "action": "顧客を表示する",
+                    "to": "顧客閲覧"
+                  },
+                  "顧客なし": {
+                    "action": "アラートを表示する",
+                    "to": "顧客検索"
+                  }
+                }
+              }
+            },
+            "取消": {
+              "actors": ["編集担当者"],
+              "defaultVisible": true,
+              "to": "顧客閲覧"
+            },
+            "設定を選択": {
+              "actors": ["編集担当者"],
+              "decision": {
+                "label": "破棄確認",
+                "branches": {
+                  "破棄する": {
+                    "action": "通知設定を表示する",
+                    "to": "設定"
+                  },
+                  "取り消す": {}
+                }
+              }
+            },
+            "顧客管理を選択": {
+              "actors": ["編集担当者"],
+              "decision": {
+                "label": "破棄確認",
+                "branches": {
+                  "破棄する": {
+                    "action": "検索を復元する",
+                    "to": "顧客検索"
+                  },
+                  "取り消す": {}
+                }
+              }
+            }
+          }
         }
-      },
-      "guardLabel": "0件",
-      "set": {
-        "outcome": "empty",
-        "searched": true,
-        "searchAlert": true
-      }
-    },
-    "openCustomer": {
-      "defaultVisible": true,
-      "from": "search",
-      "to": "customerAvailability",
-      "event": "open",
-      "action": "",
-      "set": {
-        "exists": {
-          "param": "exists"
-        },
-        "outcome": "viewed",
-        "searchAlert": false
-      }
-    },
-    "openView": {
-      "defaultVisible": true,
-      "from": "customerAvailability",
-      "to": "view",
-      "action": "顧客を表示する",
-      "guard": {
-        "condition": "exists"
-      },
-      "guardLabel": "顧客あり"
-    },
-    "openGone": {
-      "defaultVisible": true,
-      "from": "customerAvailability",
-      "to": "search",
-      "action": "アラートを表示する",
-      "guard": {
-        "not": {
-          "condition": "exists"
-        }
-      },
-      "guardLabel": "顧客なし",
-      "set": {
-        "outcome": "empty",
-        "searched": true,
-        "searchAlert": true
-      }
-    },
-    "backResults": {
-      "defaultVisible": true,
-      "from": "view",
-      "to": "search",
-      "event": "back",
-      "action": "検索結果を再表示する",
-      "set": {
-        "outcome": "none"
-      },
-      "unownedReason": "全体ナビゲーション。横断回帰シナリオで確認する。"
-    },
-    "openEdit": {
-      "defaultVisible": true,
-      "from": "view",
-      "to": "edit",
-      "event": "edit",
-      "action": "編集欄を表示する",
-      "set": {
-        "outcome": "none"
-      }
-    },
-    "updateCustomer": {
-      "defaultVisible": true,
-      "from": "edit",
-      "to": "customerAvailability",
-      "event": "update",
-      "action": "顧客を更新する",
-      "set": {
-        "exists": {
-          "param": "exists"
-        },
-        "revision": "updated",
-        "outcome": "updated"
-      }
-    },
-    "cancelEdit": {
-      "defaultVisible": true,
-      "from": "edit",
-      "to": "view",
-      "event": "cancelEdit",
-      "action": "",
-      "set": {
-        "outcome": "cancelled"
-      }
-    },
-    "requestDelete": {
-      "defaultVisible": true,
-      "from": "view",
-      "to": "deleteConfirmation",
-      "event": "requestDelete",
-      "action": "",
-      "set": {
-        "confirmed": {
-          "param": "confirmed"
-        }
-      }
-    },
-    "confirmDelete": {
-      "defaultVisible": true,
-      "from": "deleteConfirmation",
-      "to": "search",
-      "action": "顧客を削除する",
-      "guard": {
-        "condition": "deleteConfirmed"
-      },
-      "guardLabel": "はい",
-      "set": {
-        "searched": false,
-        "exists": false,
-        "outcome": "deleted",
-        "confirmed": false
-      }
-    },
-    "cancelDelete": {
-      "defaultVisible": true,
-      "from": "deleteConfirmation",
-      "to": "view",
-      "action": "",
-      "guard": {
-        "not": {
-          "condition": "deleteConfirmed"
-        }
-      },
-      "guardLabel": "いいえ",
-      "set": {
-        "outcome": "cancelled",
-        "confirmed": false
       }
     }
   }

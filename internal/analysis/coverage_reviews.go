@@ -8,16 +8,17 @@ import (
 )
 
 func reviewBasisHash(s *model.Spec, useCaseID, version string) string {
-	document := s.Document
-	document.UseCases = nil
 	u := s.UseCases[useCaseID]
 	u.CoverageReviews = nil
 	return model.Hash(map[string]any{
 		"toolVersion": version,
 		"project":     s.Project,
-		"model":       document,
-		"usecaseID":   useCaseID,
-		"usecase":     u,
+		"model": map[string]any{
+			"actors": s.Actors, "states": s.States, "transitions": s.Transitions, "decisions": s.Decisions,
+			"usecasePackages": s.UseCasePackages, "commonRules": s.CommonRules, "regressions": s.Regressions,
+		},
+		"usecaseID": useCaseID,
+		"usecase":   u,
 	})
 }
 

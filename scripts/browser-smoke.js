@@ -20,19 +20,19 @@ async page => {
     await page.setViewportSize({ width: 1440, height: 1000 });
     assert(await page.locator('#nav .nav-package').count() === 2, 'Package navigation did not render');
     assert(await page.locator('#nav .nav-usecase-summary').count() === 5, 'Use case navigation did not render');
-    assert(await page.locator('#nav .nav-scenario').count() === 25, 'Expected 14 use case scenarios and 11 regressions');
+    assert(await page.locator('#nav .nav-scenario').count() === 18, 'Expected 11 use case scenarios and 7 regressions');
     const viewIDs = await page.locator('#view-select option').evaluateAll(options => options.map(option => option.value));
     assert(viewIDs.length === 6, 'Expected system plus five use case diagrams');
     for (const id of viewIDs) {
       await page.locator('#view-select').selectOption(id);
       const start = await page.locator('#graph svg').evaluate((svg, id) => {
         const { spec } = JSON.parse(document.getElementById('spec-data').textContent);
-        const expected = [...new Set((id ? spec.usecases[id].starts : spec.project.initial).map(snapshot => snapshot.state))].sort();
+        const expected = [...new Set(id ? spec.usecases[id].starts : [spec.transitions[spec.states[''].start].to])].sort();
         const markers = [...svg.querySelectorAll('.start-node')];
         const actual = markers.map(node => node.dataset.startState).sort();
         const bounds = markers.map(node => { const circle = node.querySelector('circle'); const t = node.transform.baseVal.consolidate().matrix; return { x: t.e + circle.cx.baseVal.value, y: t.f + circle.cy.baseVal.value, radius: circle.r.baseVal.value, fill: getComputedStyle(circle).fill }; });
         const center = (Math.min(...bounds.map(b => b.x - b.radius)) + Math.max(...bounds.map(b => b.x + b.radius))) / 2;
-        const topState = Math.min(...[...svg.querySelectorAll(':scope > .node, :scope > .choice')].map(node => node.transform.baseVal.consolidate().matrix.f));
+        const topState = Math.min(...[...svg.querySelectorAll(':scope > .node, :scope > .decision')].map(node => node.transform.baseVal.consolidate().matrix.f));
         return { expected, actual, center, middle: svg.viewBox.baseVal.width / 2, top: bounds.every(b => b.y + b.radius < topState), dark: bounds.every(b => b.fill === 'rgb(23, 43, 58)'), edges: svg.querySelectorAll('.start-edge path').length };
       }, id);
       assert(JSON.stringify(start.actual) === JSON.stringify(start.expected), 'Wrong start states in diagram: ' + (id || 'system'));
@@ -42,14 +42,14 @@ async page => {
     }
     checks.push('renderer: system and all five use case diagrams show the defined start markers and arrows at the top center');
     await page.locator('#view-select').selectOption('');
-    const hiddenIDs = await page.evaluate(() => Object.entries(JSON.parse(document.getElementById('spec-data').textContent).spec.transitions).filter(([,transition]) => !transition.defaultVisible).map(([id]) => id));
+    const hiddenIDs = await page.evaluate(() => Object.entries(JSON.parse(document.getElementById('spec-data').textContent).spec.transitions).filter(([,transition]) => transition.kind !== 'start' && !transition.defaultVisible).map(([id]) => id));
     assert(hiddenIDs.length > 0, 'Fixture needs default-hidden transitions');
     for (const id of hiddenIDs) assert(await page.locator('#graph [data-transition="' + id + '"]').count() === 0, 'Hidden transitions must be excluded from the default layout');
     await page.locator('#show-all-transitions').check();
     for (const id of hiddenIDs) assert(await page.locator('#graph [data-transition="' + id + '"]').count() > 0, 'All-transitions view must include hidden transitions');
     await page.locator('#show-all-transitions').uncheck();
     await page.locator('#nav [data-scenario="regressions/customerEditNavigation"]').click();
-    const selectedMenu = page.locator('#graph [data-transition="openSettingsFromCustomerEdit"]');
+    const selectedMenu = page.locator('#graph [data-transition="顧客管理/顧客編集:設定を選択"]');
     assert(await selectedMenu.isVisible(), 'Selected hidden transition must be visible');
     await page.locator('#zoom-fit').click();
     await page.locator('#show-all-transitions').check();
@@ -66,10 +66,11 @@ async page => {
     assert((await page.locator('.scenario-goal').innerText()).length > 0, 'Scenario purpose is missing');
     assert((await page.locator('.scenario-outcome').innerText()).length > 0, 'Scenario outcome is missing');
     assert(await page.locator('.scenario-outcome').evaluate(node => !!(node.compareDocumentPosition(document.querySelector('#detail table')) & Node.DOCUMENT_POSITION_FOLLOWING)), 'Outcome must precede the operation table');
-    assert((await page.locator('#detail').innerText()).includes('モデル上の期待式'), 'Model expectation must be distinguished from the human outcome');
-    checks.push('renderer: purpose and expected outcome precede steps; model assertion is separate');
+    assert((await page.locator('#detail').innerText()).includes('アクター: 編集担当者'), 'Scenario actor is missing');
+    checks.push('renderer: purpose and expected outcome precede steps; the scenario actor is shown');
     await page.locator('#detail').screenshot({ path: inputs.output + '/scenario.png' });
-    assert(await page.locator('#coverage .review-guidance').count() === 8, 'All eight metrics need review guidance');
+    assert(await page.locator('#coverage .review-guidance').count() === 6, 'All six metrics need review guidance');
+    await page.locator('#view-select').selectOption('viewCustomer');
     const candidate = page.locator('#coverage details[data-coverage-kind]').filter({ has: page.locator('.coverage-item > button') }).first();
     await candidate.locator('summary').first().click();
     await candidate.locator('.coverage-item > button').first().click();
@@ -82,7 +83,7 @@ async page => {
     try {
       observe(reviewPage);
       await reviewPage.setContent(inputs.reviews, { waitUntil: 'load' });
-      await reviewPage.locator('#view-select').selectOption('editCustomer');
+      await reviewPage.locator('#view-select').selectOption('viewCustomer');
       const coverage = reviewPage.locator('[data-coverage-kind="boundedPaths"]');
       await coverage.locator('summary').first().click();
       const rawCoverage = await coverage.locator('summary').first().innerText();
@@ -93,11 +94,11 @@ async page => {
       }
       assert(await reviewPage.evaluate(() => window.injected === undefined), 'Review text executed as HTML');
       await coverage.locator('.review-scenario').first().click();
-      assert((await reviewPage.locator('#detail h2').innerText()).includes('editCustomer/update'), 'Representative scenario did not open');
+      assert((await reviewPage.locator('#detail h2').innerText()).includes('viewCustomer/view'), 'Representative scenario did not open');
       assert((await reviewPage.locator('.scenario-goal').innerText()).length > 0, 'Representative purpose is missing');
       checks.push('renderer: grouped coverage reviews, reasons, design requirements and representative scenario navigation');
       await reviewPage.setContent(inputs.stale, { waitUntil: 'load' });
-      await reviewPage.locator('#view-select').selectOption('editCustomer');
+      await reviewPage.locator('#view-select').selectOption('viewCustomer');
       const staleCoverage = reviewPage.locator('[data-coverage-kind="boundedPaths"]');
       await staleCoverage.locator('summary').first().click();
       assert(await staleCoverage.locator('.coverage-review[data-review-status="stale"]').count() === 3, 'Old review decisions must remain visible as stale');

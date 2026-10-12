@@ -7,9 +7,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
 )
-
-type Expr = any
 
 type Project struct {
 	SchemaVersion string             `json:"schemaVersion"`
@@ -17,124 +16,150 @@ type Project struct {
 	Repository    string             `json:"repository,omitempty"`
 	Files         []string           `json:"files"`
 	Output        string             `json:"output"`
-	Initial       []Snapshot         `json:"initial"`
 	Limits        Limits             `json:"limits"`
 	Coverage      map[string]float64 `json:"coverage"`
 }
 type Limits struct {
-	States       int `json:"states"`
-	Steps        int `json:"steps"`
-	Paths        int `json:"paths"`
-	Combinations int `json:"combinations"`
+	Steps int `json:"steps"`
+	Paths int `json:"paths"`
 }
 
 func (l *Limits) Defaults() {
-	if l.States == 0 {
-		l.States = 10000
-	}
 	if l.Steps == 0 {
 		l.Steps = 12
 	}
 	if l.Paths == 0 {
 		l.Paths = 100000
 	}
-	if l.Combinations == 0 {
-		l.Combinations = 4096
-	}
 }
 
+// Document is one source file. Its top level is the unnamed root state: start,
+// events and states written here belong to the root state shared by all files.
 type Document struct {
 	SchemaVersion   string                    `json:"schemaVersion"`
-	Variables       map[string]Variable       `json:"variables,omitempty"`
-	Screens         map[string]Screen         `json:"screens,omitempty"`
-	States          map[string]State          `json:"states,omitempty"`
-	Choices         map[string]Choice         `json:"choices,omitempty"`
+	Start           *Target                   `json:"start,omitempty"`
+	Actors          map[string]Actor          `json:"actors,omitempty"`
 	Events          map[string]Event          `json:"events,omitempty"`
-	Conditions      map[string]Expr           `json:"conditions,omitempty"`
-	Transitions     map[string]Transition     `json:"transitions,omitempty"`
+	States          map[string]State          `json:"states,omitempty"`
 	UseCasePackages map[string]UseCasePackage `json:"usecasePackages,omitempty"`
 	UseCases        map[string]UseCase        `json:"usecases,omitempty"`
 	CommonRules     map[string]CommonRule     `json:"commonRules,omitempty"`
-	Properties      map[string]Property       `json:"properties,omitempty"`
-	Decisions       map[string]DecisionTable  `json:"decisions,omitempty"`
 	Regressions     map[string]Scenario       `json:"regressions,omitempty"`
 }
-type Variable struct {
-	Domain      []any  `json:"domain"`
-	Initial     any    `json:"initial"`
+type Actor struct {
 	Description string `json:"description,omitempty"`
-}
-type Screen struct {
-	Label       string `json:"label"`
-	Description string `json:"description,omitempty"`
-}
-type State struct {
-	Label       string   `json:"label"`
-	Screen      string   `json:"screen"`
-	Events      []string `json:"events"`
-	Parent      string   `json:"parent,omitempty"`
-	Initial     string   `json:"initial,omitempty"`
-	Terminal    bool     `json:"terminal,omitempty"`
-	LayoutLayer *int     `json:"layoutLayer,omitempty"`
-}
-type Event struct {
-	Label      string           `json:"label"`
-	Source     string           `json:"source"`
-	Parameters map[string][]any `json:"parameters,omitempty"`
-	When       Expr             `json:"when,omitempty"`
 }
 
-// Choice is a transient branch vertex, not an executable UI state.
-type Choice struct {
-	Label  string `json:"label"`
-	Parent string `json:"parent,omitempty"`
+// State nests its child states. A state with children must have a start.
+type State struct {
+	Screen      string           `json:"screen,omitempty"`
+	LayoutLayer *int             `json:"layoutLayer,omitempty"`
+	Start       *Target          `json:"start,omitempty"`
+	Events      map[string]Event `json:"events,omitempty"`
+	States      map[string]State `json:"states,omitempty"`
 }
+
+// Target is the common part of every transition: an action followed by a
+// destination state OR a decision. Neither means staying in the current state
+// (not allowed for a start).
+type Target struct {
+	Action   string    `json:"action,omitempty"`
+	To       string    `json:"to,omitempty"`
+	Decision *Decision `json:"decision,omitempty"`
+}
+
+// Event is a transition triggered by an actor in the state that declares it.
+type Event struct {
+	Actors         []string `json:"actors"`
+	DefaultVisible bool     `json:"defaultVisible,omitempty"`
+	Target
+}
+
+// Decision branches by name only; scenarios choose the branch to take.
+type Decision struct {
+	Label    string            `json:"label,omitempty"`
+	Branches map[string]Target `json:"branches"`
+}
+
+// Transition kinds in the compiled index.
+const (
+	KindEvent  = "event"
+	KindStart  = "start"
+	KindBranch = "branch"
+)
+
+// StartName marks the start transition in transition IDs. Names cannot contain brackets.
+const StartName = "[開始]"
+
+// StateNode is a compiled state addressed by its path from the root ("" is the root).
+type StateNode struct {
+	Name        string            `json:"name"`
+	Parent      string            `json:"parent"`
+	Screen      string            `json:"screen,omitempty"`
+	LayoutLayer *int              `json:"layoutLayer,omitempty"`
+	Start       string            `json:"start,omitempty"`
+	Children    []string          `json:"children,omitempty"`
+	Events      map[string]string `json:"events,omitempty"`
+}
+
+// Transition is a compiled event, start or branch. From is a state path for
+// events and starts and a decision ID for branches. To is a state path, a
+// decision ID, or empty (stay in the state where the event was raised).
 type Transition struct {
-	From           string          `json:"from"`
-	To             string          `json:"to"`
-	Kind           string          `json:"kind,omitempty"`
-	Event          string          `json:"event,omitempty"`
-	Guard          Expr            `json:"guard,omitempty"`
-	GuardLabel     string          `json:"guardLabel,omitempty"`
-	DefaultVisible bool            `json:"defaultVisible,omitempty"`
-	Action         string          `json:"action"`
-	Set            map[string]Expr `json:"set,omitempty"`
-	UnownedReason  string          `json:"unownedReason,omitempty"`
+	Kind           string   `json:"kind"`
+	From           string   `json:"from"`
+	Name           string   `json:"name,omitempty"`
+	To             string   `json:"to,omitempty"`
+	Action         string   `json:"action,omitempty"`
+	Actors         []string `json:"actors,omitempty"`
+	DefaultVisible bool     `json:"defaultVisible"`
+	// Root is the event or start transition that heads this decision tree.
+	Root string `json:"root"`
 }
-type Snapshot struct {
-	State  string         `json:"state"`
-	Values map[string]any `json:"values,omitempty"`
+
+// DecisionNode is an anonymous decision owned by the transition that enters it.
+type DecisionNode struct {
+	Label    string   `json:"label,omitempty"`
+	Parent   string   `json:"parent"`
+	Owner    string   `json:"owner"`
+	Branches []string `json:"branches"`
 }
-type Step struct {
-	Transition string         `json:"transition"`
-	Input      map[string]any `json:"input,omitempty"`
-	Reject     bool           `json:"reject,omitempty"`
-	Expect     Expr           `json:"expect,omitempty"`
-	Note       string         `json:"note,omitempty"`
-}
-type Scenario struct {
-	Name            string   `json:"name"`
-	Goal            string   `json:"goal"`
-	ExpectedOutcome string   `json:"expectedOutcome"`
-	Start           Snapshot `json:"start"`
-	Steps           []Step   `json:"steps"`
-	Expect          Expr     `json:"expect"`
-	Description     string   `json:"description,omitempty"`
-}
+
 type UseCasePackage struct {
 	Name   string `json:"name"`
 	Parent string `json:"parent,omitempty"`
 }
+
+// UseCase references states and transitions by reference strings. After
+// compilation Starts hold state paths and Ends/Scope hold transition IDs.
 type UseCase struct {
 	Name            string                    `json:"name"`
 	Goal            string                    `json:"goal"`
 	Actor           string                    `json:"actor"`
 	Package         string                    `json:"package,omitempty"`
-	Starts          []Snapshot                `json:"starts"`
-	End             Expr                      `json:"end"`
+	Starts          []string                  `json:"starts"`
+	Ends            []string                  `json:"ends"`
 	Scope           []string                  `json:"scope"`
 	Scenarios       map[string]Scenario       `json:"scenarios"`
 	CoverageReviews map[string]CoverageReview `json:"coverageReviews,omitempty"`
+}
+
+// Scenario steps name events and the branches taken after them. Regressions
+// declare their own actor; use-case scenarios use the use-case actor.
+type Scenario struct {
+	Name            string `json:"name"`
+	Goal            string `json:"goal"`
+	ExpectedOutcome string `json:"expectedOutcome"`
+	Actor           string `json:"actor,omitempty"`
+	Start           string `json:"start"`
+	Steps           []Step `json:"steps"`
+	Description     string `json:"description,omitempty"`
+}
+type Step struct {
+	Event    string   `json:"event"`
+	Branches []string `json:"branches,omitempty"`
+	Reject   bool     `json:"reject,omitempty"`
+	Note     string   `json:"note,omitempty"`
 }
 type CoverageReview struct {
 	Kind                     string   `json:"kind"`
@@ -146,41 +171,38 @@ type CoverageReview struct {
 	BasisHash                string   `json:"basisHash"`
 }
 
-// CommonRule describes product-wide behavior outside the finite execution graph.
+// CommonRule describes product-wide behavior outside the state structure.
 type CommonRule struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
-}
-type Property struct {
-	Kind        string `json:"kind"`
-	Description string `json:"description"`
-	Assert      Expr   `json:"assert"`
-}
-type DecisionTable struct {
-	State string         `json:"state"`
-	Event string         `json:"event,omitempty"`
-	Cases []DecisionCase `json:"cases"`
-}
-type DecisionCase struct {
-	Values  map[string]any `json:"values,omitempty"`
-	Input   map[string]any `json:"input,omitempty"`
-	Enabled []string       `json:"enabled"`
 }
 type Source struct {
 	File    string `json:"file"`
 	Pointer string `json:"pointer,omitempty"`
 	Line    int    `json:"line,omitempty"`
 }
+
+// Spec is the compiled specification shared by analysis and rendering.
 type Spec struct {
-	Project Project `json:"project"`
-	Document
-	Sources map[string]Source `json:"sources"`
-	Hash    string            `json:"hash"`
+	Project         Project                   `json:"project"`
+	Actors          map[string]Actor          `json:"actors"`
+	States          map[string]StateNode      `json:"states"`
+	Transitions     map[string]Transition     `json:"transitions"`
+	Decisions       map[string]DecisionNode   `json:"decisions"`
+	UseCasePackages map[string]UseCasePackage `json:"usecasePackages"`
+	UseCases        map[string]UseCase        `json:"usecases"`
+	CommonRules     map[string]CommonRule     `json:"commonRules"`
+	Regressions     map[string]Scenario       `json:"regressions"`
+	Sources         map[string]Source         `json:"sources"`
+	Hash            string                    `json:"hash"`
+	// Problems found while compiling references; reported with validation.
+	Problems []Diagnostic `json:"-"`
 }
 
-func EmptyDocument() Document {
-	return Document{SchemaVersion: "1", Variables: map[string]Variable{}, Screens: map[string]Screen{}, States: map[string]State{}, Choices: map[string]Choice{}, Events: map[string]Event{}, Conditions: map[string]Expr{}, Transitions: map[string]Transition{}, UseCasePackages: map[string]UseCasePackage{}, UseCases: map[string]UseCase{}, CommonRules: map[string]CommonRule{}, Properties: map[string]Property{}, Decisions: map[string]DecisionTable{}, Regressions: map[string]Scenario{}}
+func NewSpec() *Spec {
+	return &Spec{Actors: map[string]Actor{}, States: map[string]StateNode{"": {Events: map[string]string{}}}, Transitions: map[string]Transition{}, Decisions: map[string]DecisionNode{}, UseCasePackages: map[string]UseCasePackage{}, UseCases: map[string]UseCase{}, CommonRules: map[string]CommonRule{}, Regressions: map[string]Scenario{}, Sources: map[string]Source{}}
 }
+
 func Keys[V any](m map[string]V) []string {
 	k := make([]string, 0, len(m))
 	for s := range m {
@@ -206,127 +228,123 @@ func Contains(a []string, s string) bool {
 	}
 	return false
 }
-func CopyValues(a map[string]any) map[string]any {
-	b := map[string]any{}
-	for k, v := range a {
-		b[k] = v
+
+// ChildPath joins a state path and a child name.
+func ChildPath(parent, name string) string {
+	if parent == "" {
+		return name
 	}
-	return b
-}
-func CloneSnapshot(s Snapshot) Snapshot {
-	return Snapshot{State: s.State, Values: CopyValues(s.Values)}
-}
-func (s *Spec) Normalize(v Snapshot) (Snapshot, error) {
-	leaf, err := s.Enter(v.State)
-	if err != nil {
-		return v, err
-	}
-	r := Snapshot{State: leaf, Values: map[string]any{}}
-	for k, d := range s.Variables {
-		r.Values[k] = d.Initial
-	}
-	for _, k := range Keys(v.Values) {
-		x := v.Values[k]
-		d, ok := s.Variables[k]
-		if !ok {
-			return v, fmt.Errorf("unknown variable %q", k)
-		}
-		if !InDomain(d.Domain, x) {
-			return v, fmt.Errorf("%s=%v outside domain", k, x)
-		}
-		r.Values[k] = x
-	}
-	return r, nil
+	return parent + "/" + name
 }
 
-// Enter resolves deterministic default entry through nested composite states.
-// Snapshots store one active leaf; its ancestors are implied by the hierarchy.
+// EventID, StartID, BranchID and DecisionID build stable transition identities.
+func EventID(state, event string) string   { return state + ":" + event }
+func StartID(state string) string          { return state + ":" + StartName }
+func BranchID(owner, branch string) string { return owner + ">" + branch }
+func DecisionID(owner string) string       { return owner + "?" }
+
+func (s *Spec) IsDecision(id string) bool {
+	_, ok := s.Decisions[id]
+	return ok
+}
+func (s *Spec) IsLeaf(id string) bool {
+	st, ok := s.States[id]
+	return ok && id != "" && len(st.Children) == 0
+}
+
+// StatePath returns the state followed by its ancestors, ending at the root "".
+func (s *Spec) StatePath(id string) []string {
+	path := []string{}
+	for {
+		if _, ok := s.States[id]; !ok {
+			return path
+		}
+		path = append(path, id)
+		if id == "" {
+			return path
+		}
+		id = s.States[id].Parent
+	}
+}
+
+// InState reports whether the active leaf is the state or one of its descendants.
+func (s *Spec) InState(active, id string) bool {
+	return Contains(s.StatePath(active), id)
+}
+
+// Leaves gives the leaf states at or below a state.
+func (s *Spec) Leaves(id string) []string {
+	ids := []string{}
+	for _, leaf := range Keys(s.States) {
+		if s.IsLeaf(leaf) && s.InState(leaf, id) {
+			ids = append(ids, leaf)
+		}
+	}
+	return ids
+}
+
+// Enter follows start transitions into a state until a leaf or a start decision.
 func (s *Spec) Enter(id string) (string, error) {
 	seen := map[string]bool{}
 	for {
-		if s.IsChoice(id) {
+		if s.IsDecision(id) {
 			return id, nil
 		}
 		st, ok := s.States[id]
 		if !ok {
 			return "", fmt.Errorf("unknown state %q", id)
 		}
-		if seen[id] {
-			return "", fmt.Errorf("cyclic initial state %q", id)
-		}
-		seen[id] = true
-		if st.Initial == "" {
+		if id != "" && len(st.Children) == 0 {
 			return id, nil
 		}
-		id = st.Initial
+		if seen[id] {
+			return "", fmt.Errorf("start of %q enters itself", id)
+		}
+		seen[id] = true
+		t, ok := s.Transitions[st.Start]
+		if !ok || t.To == "" {
+			return "", fmt.Errorf("state %q has no start", Display(id))
+		}
+		id = t.To
 	}
 }
 
-// StatePath returns the active state followed by its containing states.
-// The bound also allows compiler diagnostics to inspect malformed input safely.
-func (s *Spec) StatePath(id string) []string {
-	path := []string{}
-	for id != "" && len(path) <= len(s.States)+len(s.Choices) {
-		path = append(path, id)
-		if choice, ok := s.Choices[id]; ok {
-			id = choice.Parent
-		} else {
-			id = s.States[id].Parent
-		}
+// Display gives a readable state path; the root is shown explicitly.
+func Display(path string) string {
+	if path == "" {
+		return "(ルート)"
 	}
 	return path
 }
 
-func (s *Spec) IsChoice(id string) bool {
-	_, ok := s.Choices[id]
-	return ok
-}
-
-func (s *Spec) HasVertex(id string) bool {
-	_, ok := s.States[id]
-	return ok || s.IsChoice(id)
-}
-
-func (s *Spec) InState(active, id string) bool {
-	return Contains(s.StatePath(active), id)
-}
-
-func (s *Spec) Children(id string) []string {
-	ids := []string{}
-	for _, child := range Keys(s.States) {
-		if s.States[child].Parent == id {
-			ids = append(ids, child)
+// Label is the last name of a state path, or the decision label.
+func (s *Spec) Label(id string) string {
+	if d, ok := s.Decisions[id]; ok {
+		if d.Label != "" {
+			return d.Label
 		}
+		return "ディシジョン"
 	}
-	return ids
+	if st, ok := s.States[id]; ok {
+		if id == "" {
+			return Display(id)
+		}
+		return st.Name
+	}
+	return id
 }
 
-// Leaves gives the possible control states for a transition declared on id.
-func (s *Spec) Leaves(id string) []string {
-	if s.IsChoice(id) {
-		return []string{id}
-	}
-	ids := []string{}
-	for _, leaf := range Keys(s.States) {
-		if s.States[leaf].Initial == "" && s.InState(leaf, id) {
-			ids = append(ids, leaf)
-		}
-	}
-	return ids
-}
-func InDomain(domain []any, value any) bool {
-	for _, x := range domain {
-		if Equal(x, value) {
-			return true
-		}
-	}
-	return false
+// Snapshot is a control configuration: an active leaf, or a decision being
+// resolved together with the leaf that raised the event (for staying branches).
+type Snapshot struct {
+	State  string `json:"state"`
+	Origin string `json:"origin,omitempty"`
 }
 
-// Diagnostic paths include concrete event parameters and their initial data.
+// Witness is a start leaf and the transition IDs taken from it.
 type Witness struct {
-	Start Snapshot `json:"start"`
-	Steps []Step   `json:"steps"`
+	Start       string   `json:"start"`
+	Transitions []string `json:"transitions"`
 }
 type Diagnostic struct {
 	Code     string   `json:"code"`
@@ -360,22 +378,17 @@ type Coverage struct {
 	Note       string        `json:"note"`
 }
 type ScenarioResult struct {
-	Expect            Expr          `json:"expect"`
-	ID                string        `json:"id"`
-	Name              string        `json:"name"`
-	Goal              string        `json:"goal"`
-	ExpectedOutcome   string        `json:"expectedOutcome"`
-	UseCase           string        `json:"usecase,omitempty"`
-	Valid             bool          `json:"valid"`
-	Error             string        `json:"error,omitempty"`
-	Trace             []Snapshot    `json:"trace"`
-	Witness           Witness       `json:"witness"`
-	GuardObservations []Observation `json:"guardObservations,omitempty"`
-}
-type Observation struct {
-	Transition string          `json:"transition"`
-	Atoms      map[string]bool `json:"atoms"`
-	Guard      bool            `json:"guard"`
+	ID              string     `json:"id"`
+	Name            string     `json:"name"`
+	Goal            string     `json:"goal"`
+	ExpectedOutcome string     `json:"expectedOutcome"`
+	UseCase         string     `json:"usecase,omitempty"`
+	Actor           string     `json:"actor"`
+	Steps           []Step     `json:"steps"`
+	Valid           bool       `json:"valid"`
+	Error           string     `json:"error,omitempty"`
+	Trace           []Snapshot `json:"trace"`
+	Witness         Witness    `json:"witness"`
 }
 type UseCaseResult struct {
 	ID              string                 `json:"id"`
@@ -416,4 +429,12 @@ type Report struct {
 	Impact          *Impact             `json:"impact,omitempty"`
 }
 
-var CoverageKinds = []string{"states", "compositeStates", "transitions", "pairs", "primePaths", "boundedPaths", "conditions", "multipleConditions"}
+var CoverageKinds = []string{"states", "compositeStates", "transitions", "pairs", "primePaths", "boundedPaths"}
+
+// ForbiddenNameRunes cannot appear in actor, state, event or branch names
+// because they separate parts of references and transition IDs.
+const ForbiddenNameRunes = "/:>?[]"
+
+func ValidName(name string) bool {
+	return name != "" && strings.TrimSpace(name) == name && !strings.ContainsAny(name, ForbiddenNameRunes)
+}
