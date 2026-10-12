@@ -146,15 +146,9 @@
       },
       "steps": [
         {
-          "transition": "openSettingsFromSearch",
+          "transition": "openSettings",
           "input": {
             "discard": true
-          }
-        },
-        {
-          "transition": "editNotification",
-          "input": {
-            "enabled": true
           }
         },
         {
@@ -170,14 +164,6 @@
                     "var": "$state"
                   },
                   "notificationSettings"
-                ]
-              },
-              {
-                "eq": [
-                  {
-                    "var": "notificationDraft"
-                  },
-                  true
                 ]
               },
               {
@@ -206,14 +192,6 @@
                 "var": "$state"
               },
               "search"
-            ]
-          },
-          {
-            "eq": [
-              {
-                "var": "notificationDraft"
-              },
-              false
             ]
           },
           {
@@ -251,7 +229,7 @@
           "transition": "openView"
         },
         {
-          "transition": "openSettingsFromView",
+          "transition": "openSettings",
           "input": {
             "discard": true
           }

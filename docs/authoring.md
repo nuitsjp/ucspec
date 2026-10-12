@@ -51,7 +51,7 @@ initialはシステムとして許す具体的な初期構成の集合です。�
       "kind": "internal",
       "from": "search", "to": "search", "event": "search",
       "guard": {"condition": "exists"},
-      "action": "一覧を表示",
+      "action": "一覧を表示する",
       "set": {"searched": true}
     }
   }
@@ -110,7 +110,7 @@ choiceへ入る遷移は既存の`event`/`guard`/`action`/`set`をそのまま�
 
 同じchoiceの分岐は、到達した各構成でガードがちょうど一つ成立しなければなりません。重複成立は競合、どれも成立しない場合は抜けとして有限モデル検査に失敗します。暗黙のelse分岐や、イベントのない通常状態遷移を追加しません。choiceを含む内部の実行グラフでは中間ノードを保持しますが、choiceで安定状態になったとは扱いません。終了条件と状態プロパティは通常状態へ戻った安定状態の構成で評価します。
 
-図では遷移を複数行の「イベント [ガード] / アクション」で表示し、位置でイベントとアクションを区別します。`guardLabel`を指定した場合は日本語などの表示用文言として使いますが、成立判定の正本は`guard`式です。`source`に対応する「ユーザー：」「システム：」「タイマー：」の接頭辞は表示しません。`action`はシステムの振る舞いの説明、`set`は有限変数へ実際に反映する更新です。
+図では遷移を複数行の「イベント [ガード] / アクション」で表示し、位置でイベントとアクションを区別します。`guardLabel`を指定した場合は日本語などの表示用文言として使いますが、成立判定の正本は`guard`式です。`source`に対応する「ユーザー：」「システム：」「タイマー：」の接頭辞は表示しません。`action`はシステムの振る舞いの説明、`set`は有限変数へ実際に反映する更新です。イベントは「更新」のような短い語、アクションは「顧客を更新する」のように「○○を○○する」の形で書きます。
 
 `defaultVisible`は外部・内部を問わず、検査の入力ではなく図の表示集合を決める属性です。`true`なら通常図のレイアウトへ含め、未指定または`false`なら通常図のレイアウトから除外します。シナリオ、未網羅候補、反例で選択した経路は属性に関係なく通常表示の集合へ加わり、「全遷移を表示」では全遷移を配置します。表示集合が変わるとelk-goが状態の位置、複合stateの枠高さ、図幅を再計算します。非表示の内部遷移行は通常図の枠高さに含めません。この属性は実行エンジン、共通モデル、`scope`、網羅率を変えません。通常図へ含めたい遷移は`true`を明示してください。
 
@@ -131,14 +131,14 @@ choiceへ入る遷移は既存の`event`/`guard`/`action`/`set`をそのまま�
       "defaultVisible": true,
       "from":"searchResult", "to":"search",
       "guard":{"condition":"exists"}, "guardLabel":"1件以上",
-      "action":"一覧を表示",
+      "action":"一覧を表示する",
       "set":{"outcome":"none", "searched":true, "searchAlert":false}
     },
     "searchEmpty": {
       "defaultVisible": true,
       "from":"searchResult", "to":"search",
       "guard":{"not":{"condition":"exists"}}, "guardLabel":"0件",
-      "action":"アラートを表示",
+      "action":"アラートを表示する",
       "set":{"outcome":"empty", "searched":true, "searchAlert":true}
     }
   }
@@ -180,7 +180,7 @@ null、任意のGo/JavaScript、ファイル/APIアクセス、算術で無制�
       "defaultVisible": true,
       "from":"edit", "to":"view", "event":"update",
       "guard":{"condition":"canEdit"},
-      "action":"入力を検証して更新する",
+      "action":"顧客を更新する",
       "set":{"outcome":"updated", "revision":"updated"}
     }
   }

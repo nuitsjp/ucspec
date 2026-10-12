@@ -13,35 +13,20 @@
         {
           "state": "notificationSettings",
           "values": {
-            "notificationEnabled": true,
-            "notificationDraft": true
+            "notificationEnabled": true
           }
         }
       ],
       "end": {
-        "or": [
+        "eq": [
           {
-            "eq": [
-              {
-                "var": "notificationOutcome"
-              },
-              "updated"
-            ]
+            "var": "notificationOutcome"
           },
-          {
-            "eq": [
-              {
-                "var": "notificationOutcome"
-              },
-              "cancelled"
-            ]
-          }
+          "updated"
         ]
       },
       "scope": [
-        "editNotification",
-        "updateNotification",
-        "cancelNotification"
+        "updateNotification"
       ],
       "scenarios": {
         "enable": {
@@ -53,13 +38,10 @@
           },
           "steps": [
             {
-              "transition": "editNotification",
+              "transition": "updateNotification",
               "input": {
                 "enabled": true
               }
-            },
-            {
-              "transition": "updateNotification"
             }
           ],
           "expect": {
@@ -98,19 +80,15 @@
           "start": {
             "state": "notificationSettings",
             "values": {
-              "notificationEnabled": true,
-              "notificationDraft": true
+              "notificationEnabled": true
             }
           },
           "steps": [
             {
-              "transition": "editNotification",
+              "transition": "updateNotification",
               "input": {
                 "enabled": false
               }
-            },
-            {
-              "transition": "updateNotification"
             }
           ],
           "expect": {
@@ -137,61 +115,6 @@
                     "var": "notificationOutcome"
                   },
                   "updated"
-                ]
-              }
-            ]
-          }
-        },
-        "cancel": {
-          "name": "顧客情報の更新通知の編集を取り消す",
-          "goal": "通知設定の未更新の編集を取り消し、現在の設定を維持する",
-          "expectedOutcome": "編集した下書きは破棄され、通知が無効な現在の設定を保って設定画面に留まる",
-          "start": {
-            "state": "notificationSettings"
-          },
-          "steps": [
-            {
-              "transition": "editNotification",
-              "input": {
-                "enabled": true
-              }
-            },
-            {
-              "transition": "cancelNotification"
-            }
-          ],
-          "expect": {
-            "and": [
-              {
-                "eq": [
-                  {
-                    "var": "$state"
-                  },
-                  "notificationSettings"
-                ]
-              },
-              {
-                "eq": [
-                  {
-                    "var": "notificationEnabled"
-                  },
-                  false
-                ]
-              },
-              {
-                "eq": [
-                  {
-                    "var": "notificationDraft"
-                  },
-                  false
-                ]
-              },
-              {
-                "eq": [
-                  {
-                    "var": "notificationOutcome"
-                  },
-                  "cancelled"
                 ]
               }
             ]

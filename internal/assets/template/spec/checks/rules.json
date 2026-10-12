@@ -338,7 +338,8 @@
         {
           "transition": "updateCustomer",
           "input": {
-            "valid": false
+            "valid": false,
+            "exists": true
           },
           "reject": true,
           "expect": {
@@ -373,8 +374,12 @@
         {
           "transition": "updateCustomer",
           "input": {
-            "valid": true
-          },
+            "valid": true,
+            "exists": true
+          }
+        },
+        {
+          "transition": "openView",
           "expect": {
             "and": [
               {
@@ -732,37 +737,18 @@
         }
       ]
     },
-    "updatePermissions": {
+    "updateValidation": {
       "state": "edit",
       "event": "update",
       "cases": [
         {
           "values": {
             "exists": true,
-            "role": "reader"
-          },
-          "input": {
-            "valid": true
-          },
-          "enabled": []
-        },
-        {
-          "values": {
-            "exists": true,
-            "role": "reader"
-          },
-          "input": {
-            "valid": false
-          },
-          "enabled": []
-        },
-        {
-          "values": {
-            "exists": true,
             "role": "editor"
           },
           "input": {
-            "valid": true
+            "valid": true,
+            "exists": true
           },
           "enabled": [
             "updateCustomer"
@@ -774,47 +760,32 @@
             "role": "editor"
           },
           "input": {
-            "valid": false
+            "valid": true,
+            "exists": false
           },
-          "enabled": []
+          "enabled": [
+            "updateCustomer"
+          ]
         },
         {
           "values": {
-            "exists": false,
-            "role": "reader"
-          },
-          "input": {
-            "valid": true
-          },
-          "enabled": []
-        },
-        {
-          "values": {
-            "exists": false,
-            "role": "reader"
-          },
-          "input": {
-            "valid": false
-          },
-          "enabled": []
-        },
-        {
-          "values": {
-            "exists": false,
+            "exists": true,
             "role": "editor"
           },
           "input": {
-            "valid": true
+            "valid": false,
+            "exists": true
           },
           "enabled": []
         },
         {
           "values": {
-            "exists": false,
+            "exists": true,
             "role": "editor"
           },
           "input": {
-            "valid": false
+            "valid": false,
+            "exists": false
           },
           "enabled": []
         }
@@ -937,8 +908,7 @@
       "cases": [
         {
           "values": {
-            "role": "editor",
-            "exists": true
+            "role": "editor"
           },
           "enabled": [
             "openEdit"
@@ -946,22 +916,7 @@
         },
         {
           "values": {
-            "role": "editor",
-            "exists": false
-          },
-          "enabled": []
-        },
-        {
-          "values": {
-            "role": "reader",
-            "exists": true
-          },
-          "enabled": []
-        },
-        {
-          "values": {
-            "role": "reader",
-            "exists": false
+            "role": "reader"
           },
           "enabled": []
         }

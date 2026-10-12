@@ -10,19 +10,19 @@
   "output": "artifacts/ucspec",
   "initial": [
     {
-      "state": "search",
+      "state": "customerManagement",
       "values": {
         "role": "editor"
       }
     },
     {
-      "state": "search",
+      "state": "customerManagement",
       "values": {
         "role": "reader"
       }
     },
     {
-      "state": "search",
+      "state": "customerManagement",
       "values": {
         "exists": false
       }

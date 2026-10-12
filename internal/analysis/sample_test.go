@@ -109,34 +109,23 @@ func TestSampleSettingsStayOnOneScreenAndPreserveCommittedValue(t *testing.T) {
 			t.Fatal(id, err)
 		}
 	}
-	apply("openSettingsFromSearch", map[string]any{"discard": true})
+	apply("openSettings", map[string]any{"discard": true})
 	settingsScreen := s.States[st.State].Screen
-	for _, step := range []model.Step{
-		{Transition: "editNotification", Input: map[string]any{"enabled": true}},
-	} {
-		apply(step.Transition, step.Input)
-		if !s.InState(st.State, "notificationSettings") || s.States[st.State].Screen != settingsScreen {
-			t.Fatalf("%s left the settings screen: %+v", step.Transition, st)
-		}
+	if s.Transitions["updateNotification"].Kind != "internal" {
+		t.Fatal("notification update must be an internal transition")
 	}
-	if st.State != "notificationSettings" || !model.Equal(st.Values["notificationDraft"], true) || !model.Equal(st.Values["notificationEnabled"], false) {
-		t.Fatalf("editing committed the draft: %+v", st)
+	apply("updateNotification", map[string]any{"enabled": true})
+	if st.State != "notificationSettings" || s.States[st.State].Screen != settingsScreen || !model.Equal(st.Values["notificationEnabled"], true) {
+		t.Fatalf("update did not commit on the settings screen: %+v", st)
 	}
 	before := model.CloneSnapshot(st)
 	apply("keepSettingsForSearch", map[string]any{"discard": false})
 	if !model.Equal(st, before) {
-		t.Fatalf("declining navigation changed input: %+v", st)
+		t.Fatalf("declining navigation changed settings: %+v", st)
 	}
-	apply("updateNotification", nil)
-	apply("editNotification", map[string]any{"enabled": false})
-	apply("cancelNotification", nil)
-	if st.State != "notificationSettings" || s.States[st.State].Screen != settingsScreen || !model.Equal(st.Values["notificationEnabled"], true) || !model.Equal(st.Values["notificationDraft"], true) {
-		t.Fatalf("cancellation failed to restore committed setting on the same screen: %+v", st)
-	}
-	apply("editNotification", map[string]any{"enabled": false})
 	apply("returnSearchFromSettings", map[string]any{"discard": true})
-	if st.State != "search" || !model.Equal(st.Values["notificationEnabled"], true) || !model.Equal(st.Values["notificationDraft"], true) {
-		t.Fatalf("navigation committed pending notification input: %+v", st)
+	if st.State != "search" || !model.Equal(st.Values["notificationEnabled"], true) {
+		t.Fatalf("navigation lost the committed setting: %+v", st)
 	}
 }
 
@@ -155,12 +144,23 @@ func TestSampleUpdateAndDeleteHaveNoProgressStates(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := e.Apply(before, "updateCustomer", map[string]any{"valid": false}); err == nil {
+	if _, _, err := e.Apply(before, "updateCustomer", map[string]any{"valid": false, "exists": true}); err == nil {
 		t.Fatal("invalid input executed an update")
 	}
-	after, _, err := e.Apply(before, "updateCustomer", map[string]any{"valid": true})
+	checked, _, err := e.Apply(before, "updateCustomer", map[string]any{"valid": true, "exists": true})
+	if err != nil || checked.State != "customerAvailability" {
+		t.Fatalf("update did not reach the customer availability choice: %+v, %v", checked, err)
+	}
+	after, _, err := e.Apply(checked, "openView", nil)
 	if err != nil || after.State != "view" || !model.Equal(after.Values["revision"], "updated") || !model.Equal(after.Values["outcome"], "updated") {
-		t.Fatalf("update did not commit and return to view in one transition: %+v, %v", after, err)
+		t.Fatalf("update did not commit and return to view: %+v, %v", after, err)
+	}
+	gone, _, err := e.Apply(before, "updateCustomer", map[string]any{"valid": true, "exists": false})
+	if err == nil {
+		gone, _, err = e.Apply(gone, "openGone", nil)
+	}
+	if err != nil || gone.State != "search" || !model.Equal(gone.Values["searchAlert"], true) {
+		t.Fatalf("update of a deleted customer did not return to search with an alert: %+v, %v", gone, err)
 	}
 	confirmation, err := s.Normalize(model.Snapshot{State: "view"})
 	if err != nil {

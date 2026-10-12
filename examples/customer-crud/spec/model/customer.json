@@ -75,40 +75,52 @@
   },
   "choices": {
     "searchResult": {
-      "label": "検索結果"
+      "label": "検索結果",
+      "parent": "customerManagement"
     },
     "customerAvailability": {
-      "label": "顧客の有無"
+      "label": "顧客の有無",
+      "parent": "customerManagement"
     },
     "deleteConfirmation": {
-      "label": "削除確認"
+      "label": "削除確認",
+      "parent": "customerManagement"
     }
   },
   "states": {
+    "customerManagement": {
+      "label": "顧客管理",
+      "screen": "search",
+      "events": [
+        "chooseSettings"
+      ],
+      "initial": "search"
+    },
     "search": {
       "label": "顧客検索",
       "screen": "search",
+      "parent": "customerManagement",
       "layoutLayer": 0,
       "events": [
         "search",
-        "open",
-        "chooseSettings"
+        "open"
       ]
     },
     "view": {
       "label": "顧客閲覧",
       "screen": "view",
+      "parent": "customerManagement",
       "layoutLayer": 1,
       "events": [
         "edit",
         "requestDelete",
-        "back",
-        "chooseSettings"
+        "back"
       ]
     },
     "edit": {
       "label": "顧客編集",
       "screen": "edit",
+      "parent": "customerManagement",
       "layoutLayer": 2,
       "events": [
         "update",
@@ -154,14 +166,7 @@
       "source": "user",
       "parameters": {},
       "when": {
-        "and": [
-          {
-            "condition": "exists"
-          },
-          {
-            "condition": "canEdit"
-          }
-        ]
+        "condition": "canEdit"
       }
     },
     "requestDelete": {
@@ -185,7 +190,7 @@
       }
     },
     "cancelEdit": {
-      "label": "編集取消",
+      "label": "取消",
       "source": "user",
       "parameters": {}
     },
@@ -194,6 +199,10 @@
       "source": "user",
       "parameters": {
         "valid": [
+          true,
+          false
+        ],
+        "exists": [
           true,
           false
         ]
@@ -241,7 +250,7 @@
       "defaultVisible": true,
       "from": "searchResult",
       "to": "search",
-      "action": "一覧を表示",
+      "action": "一覧を表示する",
       "guard": {
         "condition": "exists"
       },
@@ -256,7 +265,7 @@
       "defaultVisible": true,
       "from": "searchResult",
       "to": "search",
-      "action": "アラートを表示",
+      "action": "アラートを表示する",
       "guard": {
         "not": {
           "condition": "exists"
@@ -279,7 +288,7 @@
         "exists": {
           "param": "exists"
         },
-        "outcome": "none",
+        "outcome": "viewed",
         "searchAlert": false
       }
     },
@@ -287,20 +296,17 @@
       "defaultVisible": true,
       "from": "customerAvailability",
       "to": "view",
-      "action": "顧客を表示",
+      "action": "顧客を表示する",
       "guard": {
         "condition": "exists"
       },
-      "guardLabel": "顧客あり",
-      "set": {
-        "outcome": "viewed"
-      }
+      "guardLabel": "顧客あり"
     },
     "openGone": {
       "defaultVisible": true,
       "from": "customerAvailability",
       "to": "search",
-      "action": "再検索してアラートを表示",
+      "action": "アラートを表示する",
       "guard": {
         "not": {
           "condition": "exists"
@@ -318,7 +324,7 @@
       "from": "view",
       "to": "search",
       "event": "back",
-      "action": "条件と結果を再表示",
+      "action": "検索結果を再表示する",
       "set": {
         "outcome": "none"
       },
@@ -329,18 +335,7 @@
       "from": "view",
       "to": "edit",
       "event": "edit",
-      "action": "編集欄を表示",
-      "guard": {
-        "and": [
-          {
-            "condition": "exists"
-          },
-          {
-            "condition": "canEdit"
-          }
-        ]
-      },
-      "guardLabel": "顧客あり・編集可",
+      "action": "編集欄を表示する",
       "set": {
         "outcome": "none"
       }
@@ -348,21 +343,13 @@
     "updateCustomer": {
       "defaultVisible": true,
       "from": "edit",
-      "to": "view",
+      "to": "customerAvailability",
       "event": "update",
-      "action": "顧客を更新",
-      "guard": {
-        "and": [
-          {
-            "condition": "exists"
-          },
-          {
-            "condition": "canEdit"
-          }
-        ]
-      },
-      "guardLabel": "顧客あり・編集可",
+      "action": "顧客を更新する",
       "set": {
+        "exists": {
+          "param": "exists"
+        },
         "revision": "updated",
         "outcome": "updated"
       }
@@ -372,7 +359,7 @@
       "from": "edit",
       "to": "view",
       "event": "cancelEdit",
-      "action": "編集を破棄",
+      "action": "",
       "set": {
         "outcome": "cancelled"
       }
@@ -393,7 +380,7 @@
       "defaultVisible": true,
       "from": "deleteConfirmation",
       "to": "search",
-      "action": "削除",
+      "action": "顧客を削除する",
       "guard": {
         "condition": "deleteConfirmed"
       },

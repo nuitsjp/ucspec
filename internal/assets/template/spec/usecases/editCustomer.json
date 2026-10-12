@@ -118,8 +118,12 @@
             {
               "transition": "updateCustomer",
               "input": {
-                "valid": true
-              },
+                "valid": true,
+                "exists": true
+              }
+            },
+            {
+              "transition": "openView",
               "expect": {
                 "and": [
                   {
@@ -375,6 +379,134 @@
                     "var": "revision"
                   },
                   "original"
+                ]
+              },
+              {
+                "eq": [
+                  {
+                    "var": "outcome"
+                  },
+                  "empty"
+                ]
+              }
+            ]
+          }
+        },
+        "deletedBeforeUpdate": {
+          "name": "更新前に顧客が削除されている",
+          "goal": "編集中に削除された顧客を誤って更新しない",
+          "expectedOutcome": "更新時に顧客の消失を確認してアラートを表示し、顧客検索画面へ戻る",
+          "start": {
+            "state": "search",
+            "values": {
+              "role": "editor"
+            }
+          },
+          "steps": [
+            {
+              "transition": "searchCustomers"
+            },
+            {
+              "transition": "searchFound"
+            },
+            {
+              "transition": "openCustomer",
+              "input": {
+                "exists": true
+              }
+            },
+            {
+              "transition": "openView"
+            },
+            {
+              "transition": "openEdit",
+              "expect": {
+                "and": [
+                  {
+                    "inState": "edit"
+                  },
+                  {
+                    "eq": [
+                      {
+                        "var": "$state"
+                      },
+                      "edit"
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "transition": "updateCustomer",
+              "input": {
+                "valid": true,
+                "exists": false
+              }
+            },
+            {
+              "transition": "openGone",
+              "expect": {
+                "and": [
+                  {
+                    "eq": [
+                      {
+                        "var": "$state"
+                      },
+                      "search"
+                    ]
+                  },
+                  {
+                    "eq": [
+                      {
+                        "var": "exists"
+                      },
+                      false
+                    ]
+                  },
+                  {
+                    "eq": [
+                      {
+                        "var": "searchAlert"
+                      },
+                      true
+                    ]
+                  },
+                  {
+                    "eq": [
+                      {
+                        "var": "outcome"
+                      },
+                      "empty"
+                    ]
+                  }
+                ]
+              }
+            }
+          ],
+          "expect": {
+            "and": [
+              {
+                "eq": [
+                  {
+                    "var": "$state"
+                  },
+                  "search"
+                ]
+              },
+              {
+                "eq": [
+                  {
+                    "var": "exists"
+                  },
+                  false
+                ]
+              },
+              {
+                "eq": [
+                  {
+                    "var": "searchAlert"
+                  },
+                  true
                 ]
               },
               {

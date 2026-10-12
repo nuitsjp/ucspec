@@ -89,17 +89,17 @@ func TestSampleCoverageDenominators(t *testing.T) {
 					}
 				case "primePaths":
 					// Repeating the search is a prime cycle that no scenario covers.
-					if c.Covered != 5 || c.Total != 6 || !hasPath(c.Missing, "searchFound", "searchCustomers") {
+					if c.Covered != 6 || c.Total != 7 || !hasPath(c.Missing, "searchFound", "searchCustomers") {
 						t.Fatal(c)
 					}
 				case "boundedPaths":
-					// The ten-step bound yields ten finite paths;
+					// The ten-step bound yields eleven finite paths;
 					// permission rejection is checked independently as a regression.
-					if c.Covered != 3 || c.Total != 10 {
+					if c.Covered != 4 || c.Total != 11 {
 						t.Fatal(c)
 					}
 				case "pairs":
-					if c.Covered != 7 || c.Total != 8 {
+					if c.Covered != 9 || c.Total != 10 {
 						t.Fatal(c)
 					}
 					if !hasPath(c.Missing, "searchFound", "searchCustomers") {

@@ -269,11 +269,13 @@ func centerStartMarkers(g *Graph) {
 		if len(section.Bends) > 0 {
 			next = section.Bends[0]
 		}
-		if shift != 0 && next.X == old.X && next.Y > old.Y {
+		// ELK may start a nominally vertical route with a sub-pixel offset when
+		// the target is nested; treat it as vertical and align to the next point.
+		if section.Start.X != next.X && math.Abs(next.X-old.X) < 1 && next.Y > old.Y {
 			// Turn in the empty space above all top-level states; preserve the
 			// remainder of ELK's route, including entries into nested states.
 			y := math.Min((old.Y+next.Y)/2, (old.Y+top)/2)
-			section.Bends = append([]Point{{section.Start.X, y}, {old.X, y}}, section.Bends...)
+			section.Bends = append([]Point{{section.Start.X, y}, {next.X, y}}, section.Bends...)
 		}
 	}
 }

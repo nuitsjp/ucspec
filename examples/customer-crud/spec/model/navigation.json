@@ -33,31 +33,13 @@
     }
   },
   "transitions": {
-    "openSettingsFromSearch": {
+    "openSettings": {
       "defaultVisible": false,
-      "from": "search",
-      "to": "notificationSettings",
+      "from": "customerManagement",
+      "to": "settings",
       "event": "chooseSettings",
-      "action": "検索を保持し、通知設定を表示",
+      "action": "通知設定を表示する",
       "set": {
-        "notificationDraft": {
-          "var": "notificationEnabled"
-        },
-        "notificationOutcome": "none",
-        "outcome": "none"
-      },
-      "unownedReason": "常設メニューによる機能間の移動。横断回帰シナリオで確認する。"
-    },
-    "openSettingsFromView": {
-      "defaultVisible": false,
-      "from": "view",
-      "to": "notificationSettings",
-      "event": "chooseSettings",
-      "action": "通知設定を表示",
-      "set": {
-        "notificationDraft": {
-          "var": "notificationEnabled"
-        },
         "notificationOutcome": "none",
         "outcome": "none"
       },
@@ -72,7 +54,7 @@
         "condition": "discardConfirmed"
       },
       "guardLabel": "破棄を承認",
-      "action": "顧客入力を破棄し、検索を復元",
+      "action": "検索を復元する",
       "set": {
         "outcome": "none"
       },
@@ -89,23 +71,20 @@
         }
       },
       "guardLabel": "破棄を取消",
-      "action": "顧客入力を保持",
+      "action": "顧客入力を保持する",
       "unownedReason": "編集途中のメニュー移動。破棄確認を横断回帰シナリオで確認する。"
     },
     "openSettingsFromCustomerEdit": {
       "defaultVisible": false,
       "from": "edit",
-      "to": "notificationSettings",
+      "to": "settings",
       "event": "chooseSettings",
       "guard": {
         "condition": "discardConfirmed"
       },
       "guardLabel": "破棄を承認",
-      "action": "顧客入力を破棄し、通知設定を表示",
+      "action": "通知設定を表示する",
       "set": {
-        "notificationDraft": {
-          "var": "notificationEnabled"
-        },
         "notificationOutcome": "none",
         "outcome": "none"
       },
@@ -122,23 +101,20 @@
         }
       },
       "guardLabel": "破棄を取消",
-      "action": "顧客入力を保持",
+      "action": "顧客入力を保持する",
       "unownedReason": "編集途中のメニュー移動。破棄確認を横断回帰シナリオで確認する。"
     },
     "returnSearchFromSettings": {
       "defaultVisible": false,
       "from": "notificationSettings",
-      "to": "search",
+      "to": "customerManagement",
       "event": "chooseCustomers",
       "guard": {
         "condition": "discardConfirmed"
       },
       "guardLabel": "破棄を承認",
-      "action": "通知入力を破棄し、検索を復元",
+      "action": "",
       "set": {
-        "notificationDraft": {
-          "var": "notificationEnabled"
-        },
         "notificationOutcome": "none",
         "outcome": "none"
       },
@@ -155,7 +131,7 @@
         }
       },
       "guardLabel": "破棄を取消",
-      "action": "通知入力を保持",
+      "action": "",
       "unownedReason": "設定編集中のメニュー移動。破棄確認を横断回帰シナリオで確認する。"
     }
   }

@@ -1,32 +1,6 @@
 {
   "schemaVersion": "1",
   "properties": {
-    "notificationCommitted": {
-      "kind": "invariant",
-      "description": "通知更新後の設定は、編集した設定値と一致する。",
-      "assert": {
-        "or": [
-          {
-            "ne": [
-              {
-                "var": "notificationOutcome"
-              },
-              "updated"
-            ]
-          },
-          {
-            "eq": [
-              {
-                "var": "notificationEnabled"
-              },
-              {
-                "var": "notificationDraft"
-              }
-            ]
-          }
-        ]
-      }
-    },
     "notificationEnablePossible": {
       "kind": "reachable",
       "description": "本人の顧客情報の更新通知を有効にして更新できる。",
@@ -50,32 +24,6 @@
           }
         ]
       }
-    },
-    "notificationCancelRestoresEnabled": {
-      "kind": "invariant",
-      "description": "通知設定の編集を取り消した後は、入力が有効な設定値に戻る。",
-      "assert": {
-        "or": [
-          {
-            "ne": [
-              {
-                "var": "notificationOutcome"
-              },
-              "cancelled"
-            ]
-          },
-          {
-            "eq": [
-              {
-                "var": "notificationEnabled"
-              },
-              {
-                "var": "notificationDraft"
-              }
-            ]
-          }
-        ]
-      }
     }
   },
   "regressions": {
@@ -88,19 +36,16 @@
       },
       "steps": [
         {
-          "transition": "openSettingsFromSearch",
+          "transition": "openSettings",
           "input": {
             "discard": true
           }
         },
         {
-          "transition": "editNotification",
+          "transition": "updateNotification",
           "input": {
             "enabled": true
           }
-        },
-        {
-          "transition": "updateNotification"
         },
         {
           "transition": "returnSearchFromSettings",
